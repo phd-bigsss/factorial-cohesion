@@ -24,20 +24,6 @@ knitr::opts_chunk$set(warning = FALSE,
 options(scipen=9999) # desactivar notacion cientifica
 ```
 
-```{css, echo=FALSE}
-# /* expandir el espacio del documento*/
-body .main-container {
-      max-width: 1600px !important;
-      width: 1600px !important;
-    }
-#/* expandir width de la TOC*/
-div.tocify {
-    width: 22% !important;
-    max-width: 331px !important;
-    max-height: 102% !important;
-}
-```
-
 ## Librerías
 
 ```{r}
@@ -50,162 +36,207 @@ pacman::p_load(dplyr,       # Manipulacion de datos
                sjmisc,      # descriptivos y frecuencias
                sjPlot,      # tablas, plots y descriptivos
                summarytools,# resumen de dataframe
+               likert,
+               ggplot2
                )
 ```
 
-## Datos
-
-Para este ejemplo se va utilizar una base de datos proveniente del paquete `carData`: 
-
-> The Chile data frame has 2700 rows and 8 columns. The data are from a national survey conducted in April and May of 1988 by FLACSO/Chile. There are some missing data.
-
-```{r echo=TRUE}
-df<- carData::Chile
-df1 <- df %>% select(zona=region,
-                     poblacion=population,
-                     sexo=sex,
-                     edad=age,
-                     educ=education,
-                     statusquo)
-```
-
-# Preparación
-
-En esta sección se realizará la preparación de datos. Se sugiere seguir los siguientes pasos para cada variable:
-
-| Paso                      | Función                         |
-|---------------------------|---------------------------------|
-| 1. Descriptivo inicial    | sjmisc::frq() o sjmisc::descr() |
-| 2. Recodificación         | car::recode()                   |
-| 3. Etiquetado de valores  | sjlabelled::set_labels()        |
-| 4. Etiquetado de variable | sjlabelled::set_label()         |
-| 5. Descriptivo final      | sjmisc::frq o sjmisc::descr()   |
-
-## Variables individuales
-
-### Edad 
-```{r edad}
-sjmisc::descr(df1$edad)
-df1$edadcat <- car::recode(var = df1$edad,
-                           recodes = "18:24=1;25:44=2;45:64=3;65:70=4",
-                           as.factor = T) 
-df1$edadcat <- set_labels(x = df1$edadcat,
-                          labels = c("18 a 24 años" = 1,
-                                     "25 a 44 años" = 2,
-                                     "45 a 65 años" = 3,
-                                     "65 años o más" = 4))
-df1$edadcat <- set_label(df1$edadcat,label = "Tramos de edad")
-sjmisc::frq(df1$edadcat,out = "txt")
-```
-
-### Sexo 
-```{r sexo}
-sjmisc::frq(df1$sexo)
-df1$mujer <- car::recode(var = df1$sexo,
-                           recodes = "'F'=1;'M'=0",
-                           as.factor = T) 
-
-df1$mujer <- set_labels(x = df1$mujer,
-                          labels = c("Hombre" = 0,
-                                     "Mujer" = 1))
-df1$mujer <- set_label(df1$mujer,label = "Sexo entrevistado")
-sjmisc::frq(df1$mujer,out = "txt")
-```
-
-### Nivel educacional
-
 ```{r}
-sjmisc::frq(df1$educ)
-df1$educ <- car::recode(df1$educ,
-                        recodes = "'P'=1;'S'=2;'PS'=3",
-                        as.factor = T)
+df_wvs<- read_dta(here::here("input/data/original/WV6_Data_stata_v20201117.dta"))
 
-df1$educ <- set_labels(df1$educ,labels = c("Primaria"=1,
-                                           "Secundaria"=2,
-                                           "Post-secundaria"=3))
-df1$educ <- set_label(df1$educ,label = "Nivel educacional")
-sjmisc::frq(df1$educ)
+df_CL <- 
+df_wvs %>% 
+  filter(V2==152) %>%
+    select(V70,V73,V76,
+         V74,V78,
+         V71,V75,
+         V77,V79,V72) %>% 
+  sjlabelled::drop_labels(., drop.na = FALSE)
+
+plot_likert(df_CL,title = "Chile, 2012",wrap.labels = 50) + theme(legend.position = "bottom")
+ggsave(plot = last_plot(),filename = "fig_CL_values.png",device = "png",scale = 1:2,path = "output")
+
+df_CL$openess <- (df_CL$V70+df_CL$V76)/3
+df_CL$selftrans <- (df_CL$V76+df_CL$V74)/2
+df_CL$selfimpro <- (df_CL$V71+df_CL$V75)/2
+df_CL$conservation <- (df_CL$V77+df_CL$V79+df_CL$V72)/3
+df_CL$country <- "Chile"
+
+
+df_DE <- 
+df_wvs %>% 
+  filter(V2==276) %>%
+  select(V70,V73,V76,
+         V74,V78,
+         V71,V75,
+         V77,V79,V72) %>% 
+  sjlabelled::drop_labels(., drop.na = FALSE)
+
+plot_likert(df_DE,title = "Germany, 2012",wrap.labels = 50) + theme(legend.position = "bottom")
+ggsave(plot = last_plot(),filename = "fig_DE_values.png",device = "png",scale = 1:2,path = "output")
+
+
+df_DE$openess <- (df_DE$V70+df_DE$V76)/3
+df_DE$selftrans <- (df_DE$V76+df_DE$V74)/2
+df_DE$selfimpro <- (df_DE$V71+df_DE$V75)/2
+df_DE$conservation <- (df_DE$V77+df_DE$V79+df_DE$V72)/3
+df_DE$country <- "Germany"
+
+summary(df_DE$openess)
+summary(df_DE$selftrans)
+summary(df_DE$selfimpro)
+summary(df_DE$conservation)
+
+df_CL_DE<- bind_rows(df_CL,df_DE)
+
+df_CL_DE_country <- 
+df_CL_DE %>% 
+  group_by(country) %>% 
+  summarise(m_openess=mean(openess,na.rm = T),
+            m_selftrans=mean(selftrans,na.rm = T),
+            m_selfimpro=mean(selfimpro,na.rm = T),
+            m_conservation=mean(conservation,na.rm = T))
+
+df_CL_DE<- left_join(df_CL_DE,df_CL_DE_country,by="country")
+df_CL_DE %>% 
+  select(openess:m_conservation) %>% 
+  correlation::correlation(method = "spearman")
+
+
+plot_openness <- ggplot(df_CL_DE, aes(x = openess, fill = country)) +
+  geom_density(alpha = 0.5) +  # Adjust alpha for transparency
+  labs(
+    title = "Openness to change",
+    x = "",
+    y = "Openness"
+  ) +
+  theme_minimal() +  # Use a minimal theme
+  scale_fill_brewer(palette = "Set2")  # Optional: Custom color palette
+
+box_openness<- ggplot(df_CL_DE, aes(y = openess, fill = country)) +
+  geom_boxplot() +
+  labs(
+    title = "Openness to change",
+    y = "Openness to change"
+  ) +
+  theme_minimal() 
+
+plot_selftrans <- ggplot(df_CL_DE, aes(x = selftrans, fill = country)) +
+  geom_density(alpha = 0.5) +  # Adjust alpha for transparency
+  labs(
+    title = "Self-transcendence",
+    x = "",
+    y = "Self-transcendence"
+  ) +
+  theme_minimal() +  # Use a minimal theme
+  scale_fill_brewer(palette = "Set2")  # Optional: Custom color palette
+
+box_selftrans<- ggplot(df_CL_DE, aes(y = selftrans, fill = country)) +
+  geom_boxplot() +
+  labs(
+    title = "Self-transcendence",
+    y = "Self-transcendence"
+  ) +
+  theme_minimal() 
+
+
+plot_selfimpro <- ggplot(df_CL_DE, aes(x = selfimpro, fill = country)) +
+  geom_density(alpha = 0.5) +  # Adjust alpha for transparency
+  labs(
+    title = "Self-enhancement",
+    x = "",
+    y = "Self-enhancement"
+  ) +
+  theme_minimal() +  # Use a minimal theme
+  scale_fill_brewer(palette = "Set2")  # Optional: Custom color palette
+
+box_selfimpro<- ggplot(df_CL_DE, aes(y = selfimpro, fill = country)) +
+  geom_boxplot() +
+  labs(
+    title = "Self-enhancement",
+    y = "Self-enhancement"
+  ) +
+  theme_minimal() 
+
+
+plot_conservation <- ggplot(df_CL_DE, aes(x = conservation, fill = country)) +
+  geom_density(alpha = 0.5) +  # Adjust alpha for transparency
+  labs(
+    title = "Conservation",
+    x = "",
+    y = "Conservation"
+  ) +
+  theme_minimal() +  # Use a minimal theme
+  scale_fill_brewer(palette = "Set2")  # Optional: Custom color palette
+
+box_conservation<- ggplot(df_CL_DE, aes(y = conservation, fill = country)) +
+  geom_boxplot() +
+  labs(
+    title = "Conservation",
+    y = "Conservation"
+  ) +
+  theme_minimal() 
+
+library(ggpubr)
+# Arrange the plots using ggarrange
+combined_plot <- ggarrange(
+  plot_openness, plot_selftrans, plot_selfimpro, plot_conservation,
+  ncol = 2, nrow = 2,  # 2 columns and 2 rows
+  labels = c("A", "B", "C", "D")  # Optional labels
+)
+
+
+# Print the combined plot
+print(combined_plot)
+
+
+# Arrange the plots using ggarrange
+combined_box <- ggarrange(
+  box_openness, box_selftrans, box_selfimpro, box_conservation,
+  ncol = 4, nrow = 1,  # 2 columns and 2 rows
+  labels = c("A", "B", "C", "D")  # Optional labels
+)
+
+# Print the combined plot
+print(combined_box)
 ```
 
-### Apoyo statusquo
 
-```{r}
-sjmisc::descr(df1$statusquo)
-df1$statusquo <- set_label(df1$statusquo,label = "Escala de apoyo al status-quo")
-sjmisc::descr(df1$statusquo)
-```
+Openness to change: "Making your own decisions (Self-Direction) and leading a fun and adventurous life (Stimulation)."
 
-## Variables contextuales
+Self-transcendence: "Being tolerant (Benevolence) and helping the people around you (Universalism)"
 
-### Zona
 
-```{r zona}
-sjmisc::frq(df1$zona)
-df1$zona <- set_labels(x = df1$zona,
-                          labels = c("Centro" = "C",
-                                     "Metropolitana Santiago" = "M",
-                                     "Norte"="N",
-                                     "Sur"="S",
-                                     "Santiago ciudad"='SA'))
-df1$zona <- set_label(df1$zona,label = "Zona geográfica")
-sjmisc::frq(df1$zona,out = "txt")
-```
+Self-enhancement: "achieving personal success (Achievement) and being in charge (Power)" 
 
-### Proporcion de mujeres x zona
-```{r}
-tab_xtab(var.row = df1$zona, # Filas= zona
-         var.col = df1$mujer,# columna= sexo 
-         show.obs = FALSE,   
-         show.row.prc = T)
-df1 %>% group_by(zona) %>% summarise(propmuj=mean(as.numeric(mujer))-1) 
+Conservation: "Feeling confident (Security), adapting to others (Comformity)and respecting traditions (Tradition)" 
 
-prop.muj<- df1 %>%
-  group_by(zona, mujer) %>%
-  summarise(n = n()) %>%
-  mutate(propmuj = n / sum(n)) %>%
-  filter(mujer==1) %>% 
-  ungroup() %>% 
-  select(zona,propmuj)
 
-df1 <- left_join(df1,prop.muj,by="zona")
-df1$propmuj <- set_label(df1$propmuj,label = "Proporción de mujeres por zona geográfica")
-sjmisc::descr(df1$propmuj)
-```
 
-### Población por zona
+*Openness to Change*
 
-```{r poblacion}
-sjmisc::frq(df1$poblacion)
-df1$poblacion <- set_label(df1$poblacion,label = "Población por zona geofráfica")
-sjmisc::frq(df1$poblacion,out = "txt")
-```
+V70	Schwartz: It is important to this person to think up new ideas and be creative (Self-Direction)
+V76	Schwartz: It is important to this person adventure and taking risks (Stimulation)
 
-# Seleccionar variables
+V73	Schwartz: It is important to this person to have a good time (Hedonism)
 
-```{r}
-df_final<- df1 %>%
-  select(zona,
-         poblacion,
-         mujer,
-         edadcat,
-         educ,
-         statusquo)
-```
 
-# Resumen 
+*Self-transcendence*
 
-```{r,results='asis', echo=FALSE}
-st_css() # esto configura el css de dfsummary
-print(dfSummary(df_final),
-      method = "render")
-view_df(df_final)
-```
+V74	Schwartz: It is important to this person to do something for the good of society (Benevolence)
+V78	Schwartz: It is important to this person looking after the environment (Universalism)
 
-# Guardar datos
 
-```{r}
-save(df_final,file = "../input/data/proc/df_final.Rdata")
-```
+*Self-enhancement*
+
+V71	Schwartz: It is important to this person to be rich (Power)
+V75	Schwartz: It is important to this person being very successful (Achievement)
+
+*Conservation*
+
+V77	Schwartz: It is important to this person to always behave properly (Comformity)
+V79	Schwartz: It is important to this person tradition (Tradition)
+V72	Schwartz: It is important to this person living in secure surroundings (Security)
 
 
 

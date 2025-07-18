@@ -1,0 +1,675 @@
+---
+title: "Preparación de datos"
+date: "`r format(Sys.time(), '%A %d %B %Y %X')`"
+output: 
+  html_document: 
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: no
+      number_sections: yes
+    code_folding: show  
+    number_sections: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+# Setup
+
+```{r setup}
+knitr::opts_chunk$set(warning = FALSE, 
+                      message = FALSE, 
+                      echo = TRUE 
+                      )
+options(scipen=9999) # desactivar notacion cientifica
+```
+
+## Librerías
+
+```{r}
+if (!require("pacman")) install.packages("pacman") # instalar pacman
+                            # cargar librerias
+pacman::p_load(dplyr,       # Manipulacion de datos 
+               haven,       # importar datos en .dta o .sav
+               car,         # recodificar variables
+               sjlabelled,  # etiquetado de variables
+               sjmisc,      # descriptivos y frecuencias
+               sjPlot,      # tablas, plots y descriptivos
+               summarytools,# resumen de dataframe
+               likert,
+               ggplot2,
+               here,
+               marginaleffects,
+               texreg,
+               panelr
+               )
+
+```
+
+
+```{r}
+load(file = here::here("input/data/proc/df_vig_CL.Rdata"))
+load(file = here::here("input/data/proc/df_vig_DE.Rdata"))
+```
+
+```{r}
+df_vig_CL_clean<- df_vig_CL %>% na.omit()
+num_vig<- df_vig_CL_clean %>% group_by(pid) %>% summarise(n=n())
+
+num_vig$exclude <- ifelse(num_vig$n<6,yes = 1,no = 0)
+table(num_vig$exclude)
+
+exclude<- num_vig %>% filter(exclude==1)
+exclude$pid
+
+df_vig_CL <- df_vig_CL %>% filter(!pid %in% exclude$pid)
+```
+
+
+# Models: Trust
+
+1)	Imagine you know person [ID] through your circle of acquaintances. How likely is it that you would get along with person [ID]? 
+
+```{r}
+set1 <-  RColorBrewer::brewer.pal(n = 8, name = "Set1")
+options(ggplot2.discrete.fill = set1) 
+options(ggplot2.discrete.colour = set1) 
+ggplot2::theme_set(ggplot2::theme_bw()) 
+ggplot2::theme_update(text=ggplot2::element_text(size=15,  family="serif"))
+options(scipen=999)
+library(estimatr)
+library(plm)
+df_vig <- df_vig_CL
+
+df_vig$friendship_z <- scale(df_vig$friendship)
+lm_vincome <- lm_robust(friendship_z~factor(vincome),data = df_vig,clusters = pid)
+lm_veduc <- lm_robust(friendship_z~factor(vedu),data = df_vig,clusters = pid)
+lm_socioeconomic <- lm_robust(friendship_z~factor(vedu)+factor(vincome),data = df_vig,clusters = pid)
+
+socioeconomic <- list(lm_vincome,lm_veduc,lm_socioeconomic)
+
+lm_vreligion <- lm_robust(friendship_z~norelig,data = df_vig,clusters = pid)
+lm_vmigration <- lm_robust(friendship_z~factor(vmigback),data = df_vig,clusters = pid)
+lm_sociocultural <- lm_robust(friendship_z~norelig+factor(vmigback),data = df_vig,clusters = pid)
+sociocultural <- list(lm_vreligion,lm_vmigration,lm_sociocultural)
+
+screenreg(sociocultural,include.ci=F)
+
+lm_vpolcenter <- lm_robust(friendship_z~polcenter,data = df_vig,clusters = pid)
+lm_vhumvalues <- lm_robust(friendship_z~selftrans,data = df_vig,clusters = pid)
+lm_political_values <- lm_robust(friendship_z~polcenter+selftrans,data = df_vig,clusters = pid)
+political_values <- list(lm_vpolcenter,lm_vhumvalues,lm_political_values)
+
+screenreg(political_values,include.ci=F)
+
+lm_SES <- plm(friendship_z~vincome+vedu,data = df_vig,index = "pid")
+lm_SES_rel <- plm(friendship_z~vincome+vedu+norelig,data = df_vig,index = "pid")
+lm_SES_rel_mig <- plm(friendship_z~vincome+vedu+norelig+vmigback,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol <- plm(friendship_z~vincome+vedu+norelig+vmigback+polcenter,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values <- plm(friendship_z~vincome+vedu+norelig+vmigback+polcenter+selftrans,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values_controls <- plm(friendship_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
+
+models_friendship<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
+screenreg(models_friendship,include.ci=F)
+
+
+# Extract coefficients and confidence intervals using broom
+coef_data <- broom::tidy(models_friendship[[6]], conf.int = TRUE)
+coef_data <- coef_data %>% filter(term %in% c(
+  "vincomeMiddle", "vincomeHigh", "veduMiddle", "veduHigh", 
+  "noreligCatholic", "noreligEvangelical", "noreligJewish", 
+  "vmigback2nd generation (Peruvian)", "vmigback1. Generation (Venezuelan)", 
+  "polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested", 
+  "selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence"))
+
+coef_data <-coef_data %>%  add_row(term = "Income (ref: $500K)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 1)
+coef_data <-coef_data %>%  add_row(term = "Education (ref: Primary)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 4) 
+coef_data <-coef_data %>%  add_row(term = "Religion (ref: Non-religious)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 7)
+coef_data <-coef_data %>%  add_row(term = "Migration (ref: No-mig. back.)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 11)
+coef_data <-coef_data %>%  add_row(term = "Political pos. (ref: Center)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 14)
+coef_data <-coef_data %>%  add_row(term = "Values (ref: Self-enhancement)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 18)
+coef_data_CL <-coef_data
+```
+
+```{r}
+library(estimatr)
+library(plm)
+df_vig <- df_vig_DE
+
+df_vig$friendship_z <- scale(df_vig$friendship)
+lm_vincome <- lm_robust(friendship_z~factor(vincome),data = df_vig,clusters = pid)
+lm_veduc <- lm_robust(friendship_z~factor(vedu),data = df_vig,clusters = pid)
+lm_socioeconomic <- lm_robust(friendship_z~factor(vedu)+factor(vincome),data = df_vig,clusters = pid)
+
+socioeconomic <- list(lm_vincome,lm_veduc,lm_socioeconomic)
+
+lm_vreligion <- lm_robust(friendship_z~norelig,data = df_vig,clusters = pid)
+lm_vmigration <- lm_robust(friendship_z~factor(vmigback),data = df_vig,clusters = pid)
+lm_sociocultural <- lm_robust(friendship_z~norelig+factor(vmigback),data = df_vig,clusters = pid)
+sociocultural <- list(lm_vreligion,lm_vmigration,lm_sociocultural)
+
+screenreg(sociocultural,include.ci=F)
+
+lm_vpolcenter <- lm_robust(friendship_z~polcenter,data = df_vig,clusters = pid)
+lm_vhumvalues <- lm_robust(friendship_z~selftrans,data = df_vig,clusters = pid)
+lm_political_values <- lm_robust(friendship_z~polcenter+selftrans,data = df_vig,clusters = pid)
+political_values <- list(lm_vpolcenter,lm_vhumvalues,lm_political_values)
+
+screenreg(political_values,include.ci=F)
+
+lm_SES <- plm(friendship_z~vincome+vedu,data = df_vig,index = "pid")
+lm_SES_rel <- plm(friendship_z~vincome+vedu+norelig,data = df_vig,index = "pid")
+lm_SES_rel_mig <- plm(friendship_z~vincome+vedu+norelig+vmigback,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol <- plm(friendship_z~vincome+vedu+norelig+vmigback+polcenter,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values <- plm(friendship_z~vincome+vedu+norelig+vmigback+polcenter+selftrans,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values_controls <- plm(friendship_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
+
+models_friendship<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
+screenreg(models_friendship,include.ci=F)
+
+
+# Extract coefficients and confidence intervals using broom
+coef_data <- broom::tidy(models_friendship[[6]], conf.int = TRUE)
+coef_data <- coef_data %>% filter(term %in% c(
+  "vincomeMiddle", "vincomeHigh", "veduMiddle", "veduHigh", 
+  "noreligChristian", "noreligMuslim", "noreligJewish", 
+  "vmigback2nd generation (Turkish)", "vmigback1. Generation (Syrian)", 
+  "polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested", 
+  "selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence"))
+
+coef_data <-coef_data %>%  add_row(term = "Income (ref: 800€)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 1)
+coef_data <-coef_data %>%  add_row(term = "Education (ref: Basic Vocational Training)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 4) 
+coef_data <-coef_data %>%  add_row(term = "Religion (ref: Non-religious)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 7)
+coef_data <-coef_data %>%  add_row(term = "Migration (ref: No-mig. back.)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 11)
+coef_data <-coef_data %>%  add_row(term = "Political pos. (ref: Center)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 14)
+coef_data <-coef_data %>%  add_row(term = "Values (ref: Self-enhancement)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 18)
+coef_data_DE <-coef_data 
+coef_data_CL$term <- c("Income (ref: Low)","Middle", "High", 
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","DE:Christian/CL:Catholic", "DE:Muslim/CL:Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")
+
+coef_data_DE$term <- c("Income (ref: Low)","Middle", "High", 
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","DE:Christian/CL:Catholic", "DE:Muslim/CL:Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")
+
+
+coef_data_DE$country <- "Germany"
+coef_data_CL$country <- "Chile"
+
+coef_data_CL_DE<-bind_rows(coef_data_CL,coef_data_DE)
+
+value_labels<- 
+c("**Income (ref: Low)**","Middle", "High", 
+          "**Education (ref: Low)**","Middle Ed", "High Ed",
+          "**Religion (ref: Non-religious)**","1st Religion [Christian|Catholic]", "2nd Religion [Muslim|Evangelical]", "3rd Religion [Jewish]",
+          "**Migration (ref: No-mig. back.)**","2nd generation [Turkish|Peruvian]", "1st generation [Syrian|Venezuelan]",
+          "**Political pos. (ref: Center)**","Left-wing", "Right-wing", "Uninterested",
+          "**Values (ref: Self-enhancement)**","Conservation", "Openness to change", "Self-transcendence")
+
+
+coef_data_CL_DE$term <- factor(coef_data_CL_DE$term,
+                               levels = rev(c("Income (ref: Low)","Middle", "High",
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","DE:Christian/CL:Catholic", "DE:Muslim/CL:Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")),
+          labels = rev(value_labels)
+          )
+
+# coef_data_CL_DE$term <- factor(coef_data_CL_DE$term,
+#                                levels = rev(value_labels),
+#           labels = rev(value_labels)
+#           )
+
+levels(coef_data_CL_DE$term)
+```
+
+```{r}
+library(ggthemes)
+library(ggtext)
+
+# Create the coefficient plot
+ggplot(coef_data_CL_DE, aes(x = estimate, y = term, color = country,group = country)) +
+  geom_vline(xintercept = 0,color="red",size=1) +  
+  geom_errorbarh(position = position_dodge(width = 0.2),aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "darkgray",size=1) +  # Confidence intervals
+  geom_point(size = 3,position = position_dodge(width = 0.2)) +  # Points for coefficient estimates
+  labs(title = "[Trust]: Imagine you know person [ID] through your circle of acquaintances.\nHow likely is it that you would get along with person [ID]?",
+       subtitle = "Not likely at all ←                                                                          → Absolutely likely",
+    x = "Standardized coefficient",
+    y =NULL
+  ) +
+  scale_x_continuous(limits = c(-0.6,0.65)) +
+  scale_y_discrete(labels = rev(value_labels)) +
+  # scale_colour_manual(values=c("red","blue"))+
+theme_minimal(base_family = "Roboto Condensed", base_size = 12) +
+  theme(panel.grid.minor = element_blank(),
+        # Bold, bigger title
+        plot.title = element_text(face = "bold", size = rel(1)),
+        # Plain, slightly bigger subtitle that is grey
+        plot.subtitle = element_text(face = "plain", size = rel(1), color = "grey70"),
+        # Italic, smaller, grey caption that is left-aligned
+        plot.caption = element_text(face = "italic", size = rel(0.7), 
+                                    color = "grey70", hjust = 0),
+        # Bold legend titles
+        legend.title = element_text(face = "bold"),
+        # Bold, slightly larger facet titles that are left-aligned for the sake of repetition
+        strip.text = element_text(face = "bold", size = rel(1.1), hjust = 0),
+        # Bold axis titles
+        axis.title = element_text(face = "bold"),
+        # Add some space above the x-axis title and make it left-aligned
+        axis.title.x = element_text(margin = margin(t = 10), hjust = 0),
+        # Add some space to the right of the y-axis title and make it top-aligned
+        axis.title.y = element_text(margin = margin(r = 10), hjust = 1))+
+  theme(
+    # axis.text.y = element_text(hjust = 1,size = 13),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    axis.text.y = element_markdown(hjust = 1,size = 13)
+  )
+
+ggsave(plot = last_plot(),filename = "fig_coefplot_friendship_CL_DE.png",device = "png",path = "output/images/",width = 3,height = 2.,units = "cm",scale = 10)
+```
+
+
+
+# Models: Cooperation
+
+2) Imagine you are faced with a task that you cannot perform on your own. How likely would you be to ask the person [ID] for help? 
+
+
+```{r}
+library(estimatr)
+library(plm)
+df_vig <- df_vig_CL
+
+df_vig$cooperation_z <- scale(df_vig$cooperation)
+lm_vincome <- lm_robust(cooperation_z~factor(vincome),data = df_vig,clusters = pid)
+lm_veduc <- lm_robust(cooperation_z~factor(vedu),data = df_vig,clusters = pid)
+lm_socioeconomic <- lm_robust(cooperation_z~factor(vedu)+factor(vincome),data = df_vig,clusters = pid)
+
+socioeconomic <- list(lm_vincome,lm_veduc,lm_socioeconomic)
+
+lm_vreligion <- lm_robust(cooperation_z~norelig,data = df_vig,clusters = pid)
+lm_vmigration <- lm_robust(cooperation_z~factor(vmigback),data = df_vig,clusters = pid)
+lm_sociocultural <- lm_robust(cooperation_z~norelig+factor(vmigback),data = df_vig,clusters = pid)
+sociocultural <- list(lm_vreligion,lm_vmigration,lm_sociocultural)
+
+screenreg(sociocultural,include.ci=F)
+
+lm_vpolcenter <- lm_robust(cooperation_z~polcenter,data = df_vig,clusters = pid)
+lm_vhumvalues <- lm_robust(cooperation_z~selftrans,data = df_vig,clusters = pid)
+lm_political_values <- lm_robust(cooperation_z~polcenter+selftrans,data = df_vig,clusters = pid)
+political_values <- list(lm_vpolcenter,lm_vhumvalues,lm_political_values)
+
+screenreg(political_values,include.ci=F)
+
+lm_SES <- plm(cooperation_z~vincome+vedu,data = df_vig,index = "pid")
+lm_SES_rel <- plm(cooperation_z~vincome+vedu+norelig,data = df_vig,index = "pid")
+lm_SES_rel_mig <- plm(cooperation_z~vincome+vedu+norelig+vmigback,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter+selftrans,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values_controls <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
+
+models_cooperation<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
+screenreg(models_cooperation,include.ci=F)
+
+
+# Extract coefficients and confidence intervals using broom
+coef_data <- broom::tidy(models_cooperation[[6]], conf.int = TRUE)
+coef_data <- coef_data %>% filter(term %in% c(
+  "vincomeMiddle", "vincomeHigh", "veduMiddle", "veduHigh", 
+  "noreligCatholic", "noreligEvangelical", "noreligJewish", 
+  "vmigback2nd generation (Peruvian)", "vmigback1. Generation (Venezuelan)", 
+  "polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested", 
+  "selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence"))
+
+coef_data <-coef_data %>%  add_row(term = "Income (ref: $500K)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 1)
+coef_data <-coef_data %>%  add_row(term = "Education (ref: Primary)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 4) 
+coef_data <-coef_data %>%  add_row(term = "Religion (ref: Non-religious)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 7)
+coef_data <-coef_data %>%  add_row(term = "Migration (ref: No-mig. back.)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 11)
+coef_data <-coef_data %>%  add_row(term = "Political pos. (ref: Center)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 14)
+coef_data <-coef_data %>%  add_row(term = "Values (ref: Self-enhancement)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 18)
+coef_data_CL <-coef_data
+```
+
+```{r}
+library(estimatr)
+library(plm)
+df_vig <- df_vig_DE
+
+df_vig$cooperation_z <- scale(df_vig$cooperation)
+lm_vincome <- lm_robust(cooperation_z~factor(vincome),data = df_vig,clusters = pid)
+lm_veduc <- lm_robust(cooperation_z~factor(vedu),data = df_vig,clusters = pid)
+lm_socioeconomic <- lm_robust(cooperation_z~factor(vedu)+factor(vincome),data = df_vig,clusters = pid)
+
+socioeconomic <- list(lm_vincome,lm_veduc,lm_socioeconomic)
+
+lm_vreligion <- lm_robust(cooperation_z~norelig,data = df_vig,clusters = pid)
+lm_vmigration <- lm_robust(cooperation_z~factor(vmigback),data = df_vig,clusters = pid)
+lm_sociocultural <- lm_robust(cooperation_z~norelig+factor(vmigback),data = df_vig,clusters = pid)
+sociocultural <- list(lm_vreligion,lm_vmigration,lm_sociocultural)
+
+screenreg(sociocultural,include.ci=F)
+
+lm_vpolcenter <- lm_robust(cooperation_z~polcenter,data = df_vig,clusters = pid)
+lm_vhumvalues <- lm_robust(cooperation_z~selftrans,data = df_vig,clusters = pid)
+lm_political_values <- lm_robust(cooperation_z~polcenter+selftrans,data = df_vig,clusters = pid)
+political_values <- list(lm_vpolcenter,lm_vhumvalues,lm_political_values)
+
+screenreg(political_values,include.ci=F)
+
+lm_SES <- plm(cooperation_z~vincome+vedu,data = df_vig,index = "pid")
+lm_SES_rel <- plm(cooperation_z~vincome+vedu+norelig,data = df_vig,index = "pid")
+lm_SES_rel_mig <- plm(cooperation_z~vincome+vedu+norelig+vmigback,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter+selftrans,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values_controls <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
+
+models_cooperation<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
+screenreg(models_cooperation,include.ci=F)
+
+
+# Extract coefficients and confidence intervals using broom
+coef_data <- broom::tidy(models_cooperation[[6]], conf.int = TRUE)
+coef_data <- coef_data %>% filter(term %in% c(
+  "vincomeMiddle", "vincomeHigh", "veduMiddle", "veduHigh", 
+  "noreligChristian", "noreligMuslim", "noreligJewish", 
+  "vmigback2nd generation (Turkish)", "vmigback1. Generation (Syrian)", 
+  "polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested", 
+  "selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence"))
+
+coef_data <-coef_data %>%  add_row(term = "Income (ref: 800€)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 1)
+coef_data <-coef_data %>%  add_row(term = "Education (ref: Basic Vocational Training)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 4) 
+coef_data <-coef_data %>%  add_row(term = "Religion (ref: Non-religious)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 7)
+coef_data <-coef_data %>%  add_row(term = "Migration (ref: No-mig. back.)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 11)
+coef_data <-coef_data %>%  add_row(term = "Political pos. (ref: Center)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 14)
+coef_data <-coef_data %>%  add_row(term = "Values (ref: Self-enhancement)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 18)
+coef_data_DE <-coef_data 
+coef_data_CL$term <- c("Income (ref: Low)","Middle", "High", 
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","DE:Christian/CL:Catholic", "DE:Muslim/CL:Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")
+
+coef_data_DE$term <- c("Income (ref: Low)","Middle", "High", 
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","DE:Christian/CL:Catholic", "DE:Muslim/CL:Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")
+
+
+coef_data_DE$country <- "Germany"
+coef_data_CL$country <- "Chile"
+
+coef_data_CL_DE<-bind_rows(coef_data_CL,coef_data_DE)
+value_labels<- 
+c("**Income (ref: Low)**","Middle", "High", 
+          "**Education (ref: Low)**","Middle Ed", "High Ed",
+          "**Religion (ref: Non-religious)**","1st Religion [Christian|Catholic]", "2nd Religion [Muslim|Evangelical]", "3rd Religion [Jewish]",
+          "**Migration (ref: No-mig. back.)**","2nd generation [Turkish|Peruvian]", "1st generation [Syrian|Venezuelan]",
+          "**Political pos. (ref: Center)**","Left-wing", "Right-wing", "Uninterested",
+          "**Values (ref: Self-enhancement)**","Conservation", "Openness to change", "Self-transcendence")
+
+
+coef_data_CL_DE$term <- factor(coef_data_CL_DE$term,
+                               levels = rev(c("Income (ref: Low)","Middle", "High",
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","DE:Christian/CL:Catholic", "DE:Muslim/CL:Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")),
+          labels = rev(value_labels)
+          )
+levels(coef_data_CL_DE$term)
+```
+
+```{r}
+library(ggthemes)
+
+# Create the coefficient plot
+ggplot(coef_data_CL_DE, aes(x = estimate, y = term, color = country,group = country)) +
+  geom_vline(xintercept = 0,color="red",size=1) +  
+  geom_errorbarh(position = position_dodge(width = 0.2),aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "darkgray",size=1) +  # Confidence intervals
+  geom_point(size = 3,position = position_dodge(width = 0.2)) +  # Points for coefficient estimates
+  labs(title = "[Cooperation]: Imagine you are faced with a task that you cannot perform on your own.\nHow likely would you be to ask the person [ID] for help?",
+       subtitle = "Not likely at all ←                                                                          → Absolutely likely",
+    x = "Standardized coefficient",
+    y =NULL
+  ) +
+  scale_x_continuous(limits = c(-0.6,0.65)) +
+  # scale_colour_manual(values=c("red","blue"))+
+theme_minimal(base_family = "Roboto Condensed", base_size = 12) +
+  theme(panel.grid.minor = element_blank(),
+        # Bold, bigger title
+        plot.title = element_text(face = "bold", size = rel(1)),
+        # Plain, slightly bigger subtitle that is grey
+        plot.subtitle = element_text(face = "plain", size = rel(1), color = "grey70"),
+        # Italic, smaller, grey caption that is left-aligned
+        plot.caption = element_text(face = "italic", size = rel(0.7), 
+                                    color = "grey70", hjust = 0),
+        # Bold legend titles
+        legend.title = element_text(face = "bold"),
+        # Bold, slightly larger facet titles that are left-aligned for the sake of repetition
+        strip.text = element_text(face = "bold", size = rel(1.1), hjust = 0),
+        # Bold axis titles
+        axis.title = element_text(face = "bold"),
+        # Add some space above the x-axis title and make it left-aligned
+        axis.title.x = element_text(margin = margin(t = 10), hjust = 0),
+        # Add some space to the right of the y-axis title and make it top-aligned
+        axis.title.y = element_text(margin = margin(r = 10), hjust = 1))+
+  theme(
+    # axis.text.y = element_text(hjust = 1,size = 13),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    axis.text.y = element_markdown(hjust = 1,size = 13)
+  )
+
+ggsave(plot = last_plot(),filename = "fig_coefplot_cooperation_CL_DE.png",device = "png",path = "output/images/",width = 3,height = 2.,units = "cm",scale = 10)
+```
+
+
+
+# Models: Neighboorhood conflict
+
+3)	Imagine that person [ID] moves into your neighborhood. How likely is it that you would come into conflict with that person?
+
+```{r}
+library(estimatr)
+library(plm)
+df_vig <- df_vig_CL
+
+df_vig$neighborhood_z <- scale(df_vig$neighborhood)
+lm_vincome <- lm_robust(neighborhood_z~factor(vincome),data = df_vig,clusters = pid)
+lm_veduc <- lm_robust(neighborhood_z~factor(vedu),data = df_vig,clusters = pid)
+lm_socioeconomic <- lm_robust(neighborhood_z~factor(vedu)+factor(vincome),data = df_vig,clusters = pid)
+
+socioeconomic <- list(lm_vincome,lm_veduc,lm_socioeconomic)
+
+lm_vreligion <- lm_robust(neighborhood_z~norelig,data = df_vig,clusters = pid)
+lm_vmigration <- lm_robust(neighborhood_z~factor(vmigback),data = df_vig,clusters = pid)
+lm_sociocultural <- lm_robust(neighborhood_z~norelig+factor(vmigback),data = df_vig,clusters = pid)
+sociocultural <- list(lm_vreligion,lm_vmigration,lm_sociocultural)
+
+screenreg(sociocultural,include.ci=F)
+
+lm_vpolcenter <- lm_robust(neighborhood_z~polcenter,data = df_vig,clusters = pid)
+lm_vhumvalues <- lm_robust(neighborhood_z~selftrans,data = df_vig,clusters = pid)
+lm_political_values <- lm_robust(neighborhood_z~polcenter+selftrans,data = df_vig,clusters = pid)
+political_values <- list(lm_vpolcenter,lm_vhumvalues,lm_political_values)
+
+screenreg(political_values,include.ci=F)
+
+lm_SES <- plm(neighborhood_z~vincome+vedu,data = df_vig,index = "pid")
+lm_SES_rel <- plm(neighborhood_z~vincome+vedu+norelig,data = df_vig,index = "pid")
+lm_SES_rel_mig <- plm(neighborhood_z~vincome+vedu+norelig+vmigback,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol <- plm(neighborhood_z~vincome+vedu+norelig+vmigback+polcenter,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values <- plm(neighborhood_z~vincome+vedu+norelig+vmigback+polcenter+selftrans,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values_controls <- plm(neighborhood_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
+
+models_neighborhood<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
+screenreg(models_neighborhood,include.ci=F)
+
+
+# Extract coefficients and confidence intervals using broom
+coef_data <- broom::tidy(models_neighborhood[[6]], conf.int = TRUE)
+coef_data <- coef_data %>% filter(term %in% c(
+  "vincomeMiddle", "vincomeHigh", "veduMiddle", "veduHigh", 
+  "noreligCatholic", "noreligEvangelical", "noreligJewish", 
+  "vmigback2nd generation (Peruvian)", "vmigback1. Generation (Venezuelan)", 
+  "polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested", 
+  "selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence"))
+
+coef_data <-coef_data %>%  add_row(term = "Income (ref: $500K)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 1)
+coef_data <-coef_data %>%  add_row(term = "Education (ref: Primary)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 4) 
+coef_data <-coef_data %>%  add_row(term = "Religion (ref: Non-religious)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 7)
+coef_data <-coef_data %>%  add_row(term = "Migration (ref: No-mig. back.)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 11)
+coef_data <-coef_data %>%  add_row(term = "Political pos. (ref: Center)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 14)
+coef_data <-coef_data %>%  add_row(term = "Values (ref: Self-enhancement)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 18)
+coef_data_CL <-coef_data
+```
+
+```{r}
+library(estimatr)
+library(plm)
+df_vig <- df_vig_DE
+
+df_vig$neighborhood_z <- scale(df_vig$neighborhood)
+lm_vincome <- lm_robust(neighborhood_z~factor(vincome),data = df_vig,clusters = pid)
+lm_veduc <- lm_robust(neighborhood_z~factor(vedu),data = df_vig,clusters = pid)
+lm_socioeconomic <- lm_robust(neighborhood_z~factor(vedu)+factor(vincome),data = df_vig,clusters = pid)
+
+socioeconomic <- list(lm_vincome,lm_veduc,lm_socioeconomic)
+
+lm_vreligion <- lm_robust(neighborhood_z~norelig,data = df_vig,clusters = pid)
+lm_vmigration <- lm_robust(neighborhood_z~factor(vmigback),data = df_vig,clusters = pid)
+lm_sociocultural <- lm_robust(neighborhood_z~norelig+factor(vmigback),data = df_vig,clusters = pid)
+sociocultural <- list(lm_vreligion,lm_vmigration,lm_sociocultural)
+
+screenreg(sociocultural,include.ci=F)
+
+lm_vpolcenter <- lm_robust(neighborhood_z~polcenter,data = df_vig,clusters = pid)
+lm_vhumvalues <- lm_robust(neighborhood_z~selftrans,data = df_vig,clusters = pid)
+lm_political_values <- lm_robust(neighborhood_z~polcenter+selftrans,data = df_vig,clusters = pid)
+political_values <- list(lm_vpolcenter,lm_vhumvalues,lm_political_values)
+
+screenreg(political_values,include.ci=F)
+
+lm_SES <- plm(neighborhood_z~vincome+vedu,data = df_vig,index = "pid")
+lm_SES_rel <- plm(neighborhood_z~vincome+vedu+norelig,data = df_vig,index = "pid")
+lm_SES_rel_mig <- plm(neighborhood_z~vincome+vedu+norelig+vmigback,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol <- plm(neighborhood_z~vincome+vedu+norelig+vmigback+polcenter,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values <- plm(neighborhood_z~vincome+vedu+norelig+vmigback+polcenter+selftrans,data = df_vig,index = "pid")
+lm_SES_rel_mig_pol_values_controls <- plm(neighborhood_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
+
+models_neighborhood<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
+screenreg(models_neighborhood,include.ci=F)
+
+
+# Extract coefficients and confidence intervals using broom
+coef_data <- broom::tidy(models_neighborhood[[6]], conf.int = TRUE)
+coef_data <- coef_data %>% filter(term %in% c(
+  "vincomeMiddle", "vincomeHigh", "veduMiddle", "veduHigh", 
+  "noreligChristian", "noreligMuslim", "noreligJewish", 
+  "vmigback2nd generation (Turkish)", "vmigback1. Generation (Syrian)", 
+  "polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested", 
+  "selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence"))
+
+coef_data <-coef_data %>%  add_row(term = "Income (ref: 800€)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 1)
+coef_data <-coef_data %>%  add_row(term = "Education (ref: Basic Vocational Training)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 4) 
+coef_data <-coef_data %>%  add_row(term = "Religion (ref: Non-religious)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 7)
+coef_data <-coef_data %>%  add_row(term = "Migration (ref: No-mig. back.)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 11)
+coef_data <-coef_data %>%  add_row(term = "Political pos. (ref: Center)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 14)
+coef_data <-coef_data %>%  add_row(term = "Values (ref: Self-enhancement)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 18)
+coef_data_DE <-coef_data 
+coef_data_CL$term <- c("Income (ref: Low)","Middle", "High", 
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","DE:Christian/CL:Catholic", "DE:Muslim/CL:Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")
+
+coef_data_DE$term <- c("Income (ref: Low)","Middle", "High", 
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","DE:Christian/CL:Catholic", "DE:Muslim/CL:Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")
+
+
+coef_data_DE$country <- "Germany"
+coef_data_CL$country <- "Chile"
+
+coef_data_CL_DE<-bind_rows(coef_data_CL,coef_data_DE)
+
+coef_data_CL_DE$term <- factor(coef_data_CL_DE$term,
+                               levels = rev(c("Income (ref: Low)","Middle", "High", 
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","DE:Christian/CL:Catholic", "DE:Muslim/CL:Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")),
+          labels = rev(c("Income (ref: Low)","Middle", "High", 
+          "Education (ref: Low)","Middle Ed", "High Ed",
+          "Religion (ref: Non-religious)","Christian/Catholic", "Muslim/Evangelical", "Jewish",
+          "Migration (ref: No-mig. back.)","2nd generation (DE:Turkish/CL:Peruvian)", "1st. Generation (DE: Syrian/CL:Venezuelan)",
+          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
+          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence"))
+          )
+levels(coef_data_CL_DE$term)
+```
+
+```{r}
+library(ggthemes)
+
+# Create the coefficient plot
+ggplot(coef_data_CL_DE, aes(x = estimate, y = term, color = country,group = country)) +
+  geom_vline(xintercept = 0,color="red",size=1) +  
+  geom_errorbarh(position = position_dodge(width = 0.2),aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "darkgray",size=1) +  # Confidence intervals
+  geom_point(size = 3,position = position_dodge(width = 0.2)) +  # Points for coefficient estimates
+  labs(title = "[Conflict]: Imagine that person [ID] moves into your neighborhood.\nHow likely is it that you would come into conflict with that person?",
+       subtitle = "Not likely at all ←                                                                          → Absolutely likely",
+    x = "Standardized coefficient",
+    y =NULL
+  ) +
+  scale_x_continuous(limits = c(-0.6,0.65)) +
+  # scale_colour_manual(values=c("red","blue"))+
+theme_minimal(base_family = "Roboto Condensed", base_size = 12) +
+  theme(panel.grid.minor = element_blank(),
+        # Bold, bigger title
+        plot.title = element_text(face = "bold", size = rel(1)),
+        # Plain, slightly bigger subtitle that is grey
+        plot.subtitle = element_text(face = "plain", size = rel(1), color = "grey70"),
+        # Italic, smaller, grey caption that is left-aligned
+        plot.caption = element_text(face = "italic", size = rel(0.7), 
+                                    color = "grey70", hjust = 0),
+        # Bold legend titles
+        legend.title = element_text(face = "bold"),
+        # Bold, slightly larger facet titles that are left-aligned for the sake of repetition
+        strip.text = element_text(face = "bold", size = rel(1.1), hjust = 0),
+        # Bold axis titles
+        axis.title = element_text(face = "bold"),
+        # Add some space above the x-axis title and make it left-aligned
+        axis.title.x = element_text(margin = margin(t = 10), hjust = 0),
+        # Add some space to the right of the y-axis title and make it top-aligned
+        axis.title.y = element_text(margin = margin(r = 10), hjust = 1))+
+  theme(
+    # axis.text.y = element_text(hjust = 1,size = 13),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    axis.text.y = element_markdown(hjust = 1,size = 13)
+  )
+
+ggsave(plot = last_plot(),filename = "fig_coefplot_neighborhood_CL_DE.png",device = "png",path = "output/images/",width = 3,height = 2.,units = "cm",scale = 10)
+```
+
+
+

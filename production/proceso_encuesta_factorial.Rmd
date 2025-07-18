@@ -417,10 +417,10 @@ df_vig %>%
       ),
       religion = recode(
         religion,
-        `1` = "católico.",
-        `2` = "evangélico.",
-        `3` = "judío.",
-        `4` = "no religioso."
+        `1` = "es católico.",
+        `2` = "es evangélico.",
+        `3` = "es judío.",
+        `4` = "no es religioso."
       ),
       education  = recode(
         education,
@@ -501,46 +501,41 @@ df_vig_ESP$employment_status <-
 
 
 df_vig_ESP$religion <-
-  ifelse(df_vig_ESP$religion == "católico." & df_vig_ESP$gender=="mujer",
-    yes = "católica.",
+  ifelse(df_vig_ESP$religion == "es católico." & df_vig_ESP$gender=="mujer",
+    yes = "es católica.",
     df_vig_ESP$religion
   )
 
 df_vig_ESP$religion <-
-  ifelse(df_vig_ESP$religion == "evangélico." & df_vig_ESP$gender=="mujer",
-    yes = "evangélica.",
+  ifelse(df_vig_ESP$religion == "es evangélico." & df_vig_ESP$gender=="mujer",
+    yes = "es evangélica.",
     df_vig_ESP$religion
   )
 
 df_vig_ESP$religion <-
-  ifelse(df_vig_ESP$religion == "judío." & df_vig_ESP$gender=="mujer",
-    yes = "judía.",
+  ifelse(df_vig_ESP$religion == "es judío." & df_vig_ESP$gender=="mujer",
+    yes = "es judía.",
     df_vig_ESP$religion
   )
 
 df_vig_ESP$religion <-
-  ifelse(df_vig_ESP$religion == "no religioso." & df_vig_ESP$gender=="mujer",
-    yes = "no religiosa.",
+  ifelse(df_vig_ESP$religion == "no es religioso." & df_vig_ESP$gender=="mujer",
+    yes = "no es religiosa.",
     df_vig_ESP$religion
   )
 
 df_vig_ESP$religion <-
-  ifelse(df_vig_ESP$religion == "evangélico." & df_vig_ESP$gender=="mujer",
-    yes = "evangélica.",
+  ifelse(df_vig_ESP$religion == "es evangélico." & df_vig_ESP$gender=="mujer",
+    yes = "es evangélica.",
     df_vig_ESP$religion
   )
 
 df_vig_ESP$religion <-
-  ifelse(df_vig_ESP$religion == "judío." & df_vig_ESP$gender=="mujer",
-    yes = "judía.",
+  ifelse(df_vig_ESP$religion == "es judío." & df_vig_ESP$gender=="mujer",
+    yes = "es judía.",
     df_vig_ESP$religion
   )
 
-df_vig_ESP$religion <-
-  ifelse(df_vig_ESP$religion == "no religioso." & df_vig_ESP$gender=="mujer",
-    yes = "no religiosa.",
-    df_vig_ESP$religion
-  )
 
 df_vig_ESP$cultural_values <-
   ifelse(df_vig_ESP$cultural_values == "sentirse seguro, adaptarse a los demás y respetar las tradiciones." & df_vig_ESP$gender=="mujer",
@@ -562,7 +557,7 @@ df_vig_ESP$es_esta <-
 
 ```{r text-ESP}
 df_vig_ESP$vig_text_ESP <- 
-paste("La Persona",df_vig_ESP$letter,"es",df_vig_ESP$gender,"y tiene",df_vig_ESP$age,df_vig_ESP$he_she,"Nació en",df_vig_ESP$migration,"y es",df_vig_ESP$religion,
+paste("La Persona",df_vig_ESP$letter,"es",df_vig_ESP$gender,"y tiene",df_vig_ESP$age,df_vig_ESP$he_she,"Nació en",df_vig_ESP$migration,"y",df_vig_ESP$religion,
       "La Persona",df_vig_ESP$letter,df_vig_ESP$education,df_vig_ESP$es_esta,df_vig_ESP$employment_status,"y tiene unos ingresos mensuales de",df_vig_ESP$income,"a","su","disposición.",
       df_vig_ESP$he_she,df_vig_ESP$himself_herself,"Se considera políticamente",df_vig_ESP$political_orientation,
       "Para la persona",df_vig_ESP$letter,"es importante",df_vig_ESP$cultural_values)
