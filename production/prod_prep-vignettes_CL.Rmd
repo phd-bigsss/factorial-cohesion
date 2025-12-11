@@ -1,5 +1,5 @@
 ---
-title: "Preparación de datos"
+title: "Data Preparation"
 date: "`r format(Sys.time(), '%A %d %B %Y %X')`"
 output: 
   html_document: 
@@ -13,8 +13,6 @@ output:
 editor_options: 
   chunk_output_type: console
 ---
-
-# Setup
 
 ```{r setup}
 knitr::opts_chunk$set(warning = FALSE, 
@@ -31,9 +29,9 @@ ggplot2::theme_update(text=ggplot2::element_text(size=15,  family="serif"))
 options(scipen=999)
 ```
 
-## Librerías
+# Data
 
-```{r}
+```{r load}
 if (!require("pacman")) install.packages("pacman") # instalar pacman
                             # cargar librerias
 pacman::p_load(dplyr,       # Manipulacion de datos 
@@ -48,25 +46,72 @@ pacman::p_load(dplyr,       # Manipulacion de datos
                here,
                marginaleffects,
                texreg,
-               panelr
+               panelr,
+               tidyr
                )
 
-```
-
-```{r}
-df_inicio <- read.csv(here::here("input/data/original/survey-edumer/01_inicio.csv"))
+# df_inicio <- read.csv(here::here("input/data/original/survey-edumer/01_inicio.csv"))
 df_vig <- read.csv(here::here("input/data/original/survey-edumer/02_vignettes.csv"))
+load(file = here::here("input/data/original/survey-edumer/iniciadas-280125.RData"))
+df_inicio <-iniciadas
+```
+# Respondent data
+
+```{r sex}
+df_inicio$female<- car::recode(df_inicio$screen_sex,"1=0;2=1;c(3,4)=NA")
 ```
 
-# Recode sociodemographic:
+```{r age}
+# Suponiendo que la variable de edad se llama 'age'
+df_inicio$age_group <- 
+ car::recode(df_inicio$screen_age,
+    "18:24='18-24';
+     25:34='25-34';
+     35:44='35-44';
+     45:54='45-54';
+     55:64='55-64';
+     65:74='65-74';
+     75:84='75-84';
+     85:99='85+'")
+frq(df_inicio$age_group)
+```
 
-```{r}
-library(sjmisc)
+```{r migration}
+frq(df_inicio$carac_a12)
+# Chile	Venezuela	Bolivia	Perú	Colombia	Haití	Ecuador	Argentina	República dominicana	España	Brasil	Cuba	Paraguay	Otro
 
-frq(df_inicio$screen_sex) # 1 = Hombre, 2 = Mujer
-frq(df_inicio$screen_age) # 1 = Hombre, 2 = Mujer
-frq(df_inicio$screen_education) 
+df_inicio$migration <- car::recode(df_inicio$carac_a12,"1='Chile';2='Venezuela';3='Bolivia';4='Peru';else ='Others'")
+df_inicio$migration <- factor(df_inicio$migration,levels = c("Chile","Venezuela","Peru","Bolivia","Others"))
+frq(df_inicio$migration)
+```
 
+```{r religion}
+frq(df_inicio$carac_a05)
+
+df_inicio$religion <- car::recode(df_inicio$carac_a05,as.factor = T,
+  "1 = 'Catholic';
+   2 = 'Evangelical';
+   3 = 'Protestant';
+   4 = 'Jewish';
+   5 = 'Believer without affiliation';
+   6 = 'Atheist';
+   7 = 'Agnostic';
+   8 = 'None';
+   9 = 'Don not know';
+  10 = 'Prefer not to answer'"
+)
+
+df_inicio$religion <- factor(df_inicio$religion,
+                             levels =
+                               c("Catholic","Evangelical","Protestant",
+                                 "Jewish","Believer without affiliation",
+                                 "Atheist","Agnostic","None","Do not know","Prefer not to answer"))
+
+frq(df_inicio$religion)
+```
+
+
+```{r education}
 # 1 Educación Básica incompleta
 # 2 Educación Básica completa
 # 3 Educación Media incompleta
@@ -108,41 +153,511 @@ frq(df_inicio$isced)
 # High School Education (incomplete and complete)
 # Higher Technical Education (incomplete and complete)
 # University and Postgraduate Education (incomplete, complete university and postgraduate studies)
-
-
-# Suponiendo que la variable de edad se llama 'age'
-df_inicio$age_group   <- 
- car::recode(df_inicio$screen_age,
-    "18:24='18-24';
-     25:34='25-34';
-     35:44='35-44';
-     45:54='45-54';
-     55:64='55-64';
-     65:74='65-74';
-     75:84='75-84';
-     85:99='85+'")
-
-frq(df_inicio$age_group)
-df_socdem <- df_inicio %>% dplyr::select(pid,screen_sex,educat,age_group,screen_age)
-df_pid<- frq(df_socdem$pid) %>% data.frame()
-frq(df_pid$frq)
 ```
 
+```{r income}
 
-```{r}
-load(file = here::here("input/data/original/survey-edumer/iniciadas-280125.RData"))
+# carac_a10
+# Menos de $280.000 mensuales liquidos
+# De $280.001 a $380.000 mensuales liquidos
+# De $380.001 a $470.000 mensuales liquidos
+# De $470.001 a $610.000 mensuales liquidos
+# De $610.001 a $730.000 mensuales liquidos
+# De $730.001 a $890.000 mensuales liquidos
+# De $890.001 a $1.100.000 mensuales liquidos
+# De $1.100.001 a $2.700.000 mensuales liquidos
+# De $2.700.001 a $4.100.000 mensuales liquidos
+# Mas de $4.100.001 mensuales liquidos
 
-df_pid<- frq(iniciadas$pid) %>% data.frame()
-frq(df_pid$frq)
+frq(df_inicio$carac_a10)
+df_inicio$income_gross<- df_inicio$carac_a10
+df_inicio$income_gross <- as.factor(df_inicio$income_gross)
+levels(df_inicio$income_gross)
+df_inicio$income_gross <- 
+  factor(df_inicio$income_gross,
+         levels = 
+           c("Menos de $280.000 mensuales liquidos",
+             "De $280.001 a $380.000 mensuales liquidos",
+             "De $380.001 a $470.000 mensuales liquidos",
+             "De $470.001 a $610.000 mensuales liquidos",
+             "De $610.001 a $730.000 mensuales liquidos",
+             "De $730.001 a $890.000 mensuales liquidos",
+             "De $890.001 a $1.100.000 mensuales liquidos",
+             "De $1.100.001 a $2.700.000 mensuales liquidos",
+             "De $2.700.001 a $4.100.000 mensuales liquidos",
+             "Mas de $4.100.001 mensuales liquidos"))
+
+# Top coding:
+# https://gss.norc.org/content/dam/gss/get-documentation/pdf/reports/methodological-reports/MR101%20Getting%20the%20Most%20Out%20of%20the%20GSS%20Income%20Measures.pdf 
+# Input values
+f_top <- 95
+f_below <- 206
+L_top <- 4100001
+L_below <- 2700001
+
+# Pareto shape parameter V
+V <- (log(f_below + f_top) - log(f_top)) / (log(L_top) - log(L_below))
+
+# Raw Pareto mean for top-coded category
+M_top <- L_top * V / (V - 1)
+
+# Hout’s half-adjusted estimate (to avoid overestimation)
+M_top_adjusted <- L_top + 0.5 * (M_top - L_top)
+
+# Print results
+M_top_adjusted
+
+frq(df_inicio$income_gross)
+df_inicio <- df_inicio %>%
+  mutate(income_gross_num = case_when(
+    income_gross == "Menos de $280.000 mensuales liquidos" ~ 140000,
+    income_gross == "De $280.001 a $380.000 mensuales liquidos" ~ 330000,
+    income_gross == "De $380.001 a $470.000 mensuales liquidos" ~ 425000,
+    income_gross == "De $470.001 a $610.000 mensuales liquidos" ~ 540000,
+    income_gross == "De $610.001 a $730.000 mensuales liquidos" ~ 670000,
+    income_gross == "De $730.001 a $890.000 mensuales liquidos" ~ 810000,
+    income_gross == "De $890.001 a $1.100.000 mensuales liquidos" ~ 995000,
+    income_gross == "De $1.100.001 a $2.700.000 mensuales liquidos" ~ 1900000,
+    income_gross == "De $2.700.001 a $4.100.000 mensuales liquidos" ~ 3400000,
+    income_gross == "Mas de $4.100.001 mensuales liquidos" ~ M_top_adjusted,
+    TRUE ~ NA_real_
+  ))
+
+summary(df_inicio$income_gross_num)
+
+ #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's
+ # 140000  425000  670000 1093692 1900000 5264323     910 
+
+# The National Statistics Institute (INE) reported that the median monthly income 
+# for employed people in Chile in 2024 was $611,162, which means that half of the
+# workers earned that amount or less, and the other half, more.
+
+
+# carac_a11		**A11. ¿Cuál el número de personas que viven en su hogar?**
+frq(df_inicio$carac_a11)
+df_inicio$hh_members <- car::recode(df_inicio$carac_a11,"0=1")
+summary(df_inicio$hh_members)
+df_inicio <- df_inicio %>%
+  mutate(
+    oecd_eq_factor = 1 + 0.5 * (df_inicio$hh_members - 1),
+    income_eq = income_gross_num / oecd_eq_factor
+  )
+
+frq(df_inicio$oecd_eq_factor)
+
+summary(df_inicio$income_eq)
+df_inicio$income_ter <- dplyr::ntile(df_inicio$income_eq,3)
+df_inicio$income_cua <- dplyr::ntile(df_inicio$income_eq,4)
+df_inicio$income_qui <- dplyr::ntile(df_inicio$income_eq,5)
+
+df_inicio %>% group_by(income_qui) %>% summarise(median(income_eq),mean(income_eq),min(income_eq),max(income_eq))
 ```
 
+```{r employment}
+
+```
+
+```{r political}
+frq(df_inicio$carac_a08)
+df_inicio$ideology <- factor(df_inicio$carac_a08,
+  levels = 1:9,
+  labels = c(
+    "Derecha",
+    "Centro derecha",
+    "Centro",
+    "Centro izquierda",
+    "Izquierda",
+    "Independiente",
+    "Ninguna",
+    "No sé",
+    "Preferiría no responder"
+  )
+)
+
+df_inicio$ideology_collapsed <- dplyr::case_when(
+  df_inicio$ideology %in% c("Izquierda", "Centro izquierda") ~ "Left",
+  df_inicio$ideology %in% c("Centro", "Centro derecha") ~ "Center",
+  df_inicio$ideology == "Derecha" ~ "Right",
+  df_inicio$ideology %in% c("Independiente", "Ninguna", "No sé", "Preferiría no responder") ~ "Non-Partisan",
+  TRUE ~ NA_character_  # Catch any unexpected or missing cases
+)
+
+# Turn into a factor, optionally order levels
+df_inicio$ideology_collapsed <- factor(
+  df_inicio$ideology_collapsed,
+  levels = c("Left", "Center", "Right", "Non-Partisan")
+)
+
+frq(df_inicio$ideology_collapsed)
+```
+
+```{r values}
+values_valabel <- 
+  c("Not at all like me" = 1,"Not like me" = 2,"A little like me" = 3,
+    "Somewhat like me" = 4,"Like me" = 5,"Very much like me" = 6,"Don't know" = 7,
+    "Prefer not to answer" = 8)
+
+#E1
+set_label(df_inicio$values_01) <- "01. Thinks it is important to have original and creative ideas. Likes to do things in their own way"
+df_inicio$values_01 <- set_labels(df_inicio$values_01,labels = values_valabel)
+# E2
+set_label(df_inicio$values_02) <- "02. Thinks it is important to be wealthy. Wants to have a lot of money and expensive things"
+df_inicio$values_02 <- set_labels(df_inicio$values_02, labels = values_valabel)
+
+# E3
+set_label(df_inicio$values_03) <- "03. Thinks it is important that everyone be treated equally. Believes everyone should have the same opportunities in life"
+df_inicio$values_03 <- set_labels(df_inicio$values_03, labels = values_valabel)
+
+# E4
+set_label(df_inicio$values_04) <- "04. Thinks it is important to show their abilities. Wants everyone to admire what they do"
+df_inicio$values_04 <- set_labels(df_inicio$values_04, labels = values_valabel)
+
+# E5
+set_label(df_inicio$values_05) <- "05. Thinks it is important to live in secure surroundings. Avoids anything that might endanger safety"
+df_inicio$values_05 <- set_labels(df_inicio$values_05, labels = values_valabel)
+
+# E6
+set_label(df_inicio$values_06) <- "06. Likes surprises and is always looking for new things to do. Thinks it is important to do lots of different things in life"
+df_inicio$values_06 <- set_labels(df_inicio$values_06, labels = values_valabel)
+
+# E7
+set_label(df_inicio$values_07) <- "07. Believes that people should do what they are told. Thinks they should always follow the rules, even when no one is watching"
+df_inicio$values_07 <- set_labels(df_inicio$values_07, labels = values_valabel)
+
+# E8
+set_label(df_inicio$values_08) <- "08. Thinks it is important to listen to people who are different from themselves. Even when they disagree, they want to understand them"
+df_inicio$values_08 <- set_labels(df_inicio$values_08, labels = values_valabel)
+
+# E9
+set_label(df_inicio$values_09) <- "09. Thinks it is important to be humble and modest. Tries not to draw attention to themselves"
+df_inicio$values_09 <- set_labels(df_inicio$values_09, labels = values_valabel)
+
+# E10
+set_label(df_inicio$values_10) <- "10. Thinks it is important to have fun. Likes to treat themselves"
+df_inicio$values_10 <- set_labels(df_inicio$values_10, labels = values_valabel)
+
+# E11
+set_label(df_inicio$values_11) <- "11. Thinks it is important to make their own decisions about what they do. Likes to be free and not depend on others"
+df_inicio$values_11 <- set_labels(df_inicio$values_11, labels = values_valabel)
+
+# E12
+set_label(df_inicio$values_12) <- "12. Thinks it is very important to help the people around them. Cares about their well-being"
+df_inicio$values_12 <- set_labels(df_inicio$values_12, labels = values_valabel)
+
+# E13
+set_label(df_inicio$values_13) <- "13. Thinks it is important to be successful. Wants people to recognize their achievements"
+df_inicio$values_13 <- set_labels(df_inicio$values_13, labels = values_valabel)
+
+# E14
+set_label(df_inicio$values_14) <- "14. Thinks it is important that the government ensures their safety from all threats. Wants a strong state capable of defending its citizens"
+df_inicio$values_14 <- set_labels(df_inicio$values_14, labels = values_valabel)
+# E15
+set_label(df_inicio$values_15) <- "15. Looks for adventure and likes to take risks. Wants an exciting life"
+df_inicio$values_15 <- set_labels(df_inicio$values_15, labels = values_valabel)
+
+# E16
+set_label(df_inicio$values_16) <- "16. Thinks it is important to always behave properly. Wants to avoid doing anything people might say is wrong"
+df_inicio$values_16 <- set_labels(df_inicio$values_16, labels = values_valabel)
+
+
+# E17
+set_label(df_inicio$values_17) <- "17. Thinks it is important to be respected by others. Wants people to do what they say"
+df_inicio$values_17 <- set_labels(df_inicio$values_17, labels = values_valabel)
+
+# E18
+set_label(df_inicio$values_18) <- "18. Thinks it is important to be loyal to their friends. Wants to devote themselves to people close to them"
+df_inicio$values_18 <- set_labels(df_inicio$values_18, labels = values_valabel)
+
+# E19
+set_label(df_inicio$values_19) <- "19. Firmly believes that people should care for nature. Thinks protecting the environment is important"
+df_inicio$values_19 <- set_labels(df_inicio$values_19, labels = values_valabel)
+
+# E20
+set_label(df_inicio$values_20) <- "20. Thinks traditions are important. Tries to follow the customs of their religion or family"
+df_inicio$values_20 <- set_labels(df_inicio$values_20, labels = values_valabel)
+
+# E21
+set_label(df_inicio$values_21) <- "21. Looks for every chance to have fun. Thinks it is important to do things that give them pleasure"
+df_inicio$values_21 <- set_labels(df_inicio$values_21, labels = values_valabel)
+
+df_inicio <-  df_inicio %>% 
+  mutate(
+    swval01 = values_01,
+    swval02 = values_02,
+    swval03 = values_03,
+    swval04 = values_04,
+    swval05 = values_05,
+    swval06 = values_06,
+    swval07 = values_07,
+    swval08 = values_08,
+    swval09 = values_09,
+    swval10 = values_10,
+    swval11 = values_11,
+    swval12 = values_12,
+    swval13 = values_13,
+    swval14 = values_14,
+    swval15 = values_15,
+    swval16 = values_16,
+    swval17 = values_17,
+    swval18 = values_18,
+    swval19 = values_19,
+    swval20 = values_20,
+    swval21 = values_21
+  )
+
+for (i in names(select(df_inicio,starts_with("swval")))) {
+  df_inicio[[i]] <- sjlabelled::drop_labels(car::recode(df_inicio[[i]],"c(7,8)=NA"), drop.na = FALSE)  
+}
+
+# 10 Values version
+
+# BENEVOLENCE
+# 12. It's very important to him to help the people around him. He wants to care for other people.
+# 18. It is important to him to be loyal to his friends. He wants to devote himself to people close to him
+df_inicio$benevolence<- rowSums(df_inicio[,c("swval12","swval18")],na.rm = T)/2
+
+# UNIVERSALISM 
+# 3. He thinks it is important that every person in the world be treated equally. He wants justice for everybody, even for people he doesn’t know.
+# 8. It is important to him to listen to people who are different from him. Even when he disagrees with them, he still wants to understand them.
+# 19. He strongly believes that people should care for nature. Looking after the environment is important to him. 
+df_inicio$universalism<- rowSums(df_inicio[,c("swval03","swval08","swval19")],na.rm = T)/3
+
+# SELF-DIRECTION
+# 1. Thinking up new ideas and being creative is important to him. He likes to do things in hisown original way.
+# 11. It is important to him to make his own decisions about what he does. He likes to be free to plan and to choose his activities for himself.
+
+df_inicio$selfdirection<- rowSums(df_inicio[,c("swval01","swval11")],na.rm = T)/2
+
+# STIMULATION
+# 6. He likes surprises and is always looking for new things to do. He thinks it is important todo lots of different things in life.
+# 15. He looks for adventures and likes to take risks. He wants to have an exciting life.
+df_inicio$stimulation<- rowSums(df_inicio[,c("swval06","swval15")],na.rm = T)/2
+
+# HEDONISM
+# 10. Having a good time is important to him. He likes to “spoil” himself.
+# 21. He seeks every chance he can to have fun. It is important to him to do things that givehim pleasure.
+df_inicio$hedonism<- rowSums(df_inicio[,c("swval10","swval21")],na.rm = T)/2
+
+# ACHIEVEMENT
+# 4. It is very important to him to show his abilities. He wants people to admire what he does.
+# 13. Being very successful is important to him. He likes to impress other people.
+df_inicio$achievement<- rowSums(df_inicio[,c("swval04","swval13")],na.rm = T)/2
+
+# POWER
+# 2. It is important to him to be rich. He wants to have a lot of money and expensive things.
+# 17. It is important to him to be in charge and tell others what to do. He wants people to do what he says.
+df_inicio$power<- rowSums(df_inicio[,c("swval02","swval17")],na.rm = T)/2
+
+# SECURITY
+# 5. It is important to him to live in secure surroundings. He avoids anything that might endanger his safety.
+# 14. It is very important to him that his country be safe from threats from within and without. He is concerned that social order be protected. 
+df_inicio$security<- rowSums(df_inicio[,c("swval05","swval14")],na.rm = T)/2
+
+# CONFORMITY 
+# 7. He believes that people should do what they're told. He thinks people should follow rules at all times, even when no-one is watching.
+# 16. It is important to him always to behave properly. He wants to avoid doing anything people would say is wrong. 
+df_inicio$conformity<- rowSums(df_inicio[,c("swval07","swval16")],na.rm = T)/2
+
+# TRADITION
+# 9. He thinks it's important not to ask for more than what you have. He believes that people should be satisfied with what they have.
+# 20. Religious belief is important to him. He tries hard to do what his religion requires
+df_inicio$tradition<- rowSums(df_inicio[,c("swval09","swval20")],na.rm = T)/2
+
+# Mean full scale
+
+
+df_inicio %>% select(benevolence,universalism,selfdirection,stimulation,hedonism,
+                     achievement,power,security,conformity,tradition) %>% 
+  correlation::correlation() %>% summary()
+
+df_inicio$mrat <- rowMeans(df_inicio[, c("benevolence","universalism","selfdirection",
+                                         "stimulation","hedonism","achievement",
+                                         "power","security","conformity","tradition")],
+                           na.rm = TRUE)
+
+# Person-centered values (ipsatizing)
+df_inicio$benevolence_c  <- df_inicio$benevolence  - df_inicio$mrat
+df_inicio$universalism_c <- df_inicio$universalism - df_inicio$mrat
+df_inicio$selfdirection_c<- df_inicio$selfdirection- df_inicio$mrat
+df_inicio$stimulation_c  <- df_inicio$stimulation  - df_inicio$mrat
+df_inicio$hedonism_c     <- df_inicio$hedonism     - df_inicio$mrat
+df_inicio$achievement_c  <- df_inicio$achievement  - df_inicio$mrat
+df_inicio$power_c        <- df_inicio$power        - df_inicio$mrat
+df_inicio$security_c     <- df_inicio$security     - df_inicio$mrat
+df_inicio$conformity_c   <- df_inicio$conformity   - df_inicio$mrat
+df_inicio$tradition_c    <- df_inicio$tradition    - df_inicio$mrat
+
+# --- Grouping values centered on the 4 higher values ---
+
+df_inicio$self_transcendence <- rowMeans(df_inicio[, c("universalism_c","benevolence_c")],
+                                         na.rm = TRUE)
+
+df_inicio$self_enhancement  <- rowMeans(df_inicio[, c("achievement_c","power_c")],
+                                        na.rm = TRUE)
+
+df_inicio$openness_change   <- rowMeans(df_inicio[, c("selfdirection_c","stimulation_c","hedonism_c")],
+                                        na.rm = TRUE)
+
+df_inicio$conservation      <- rowMeans(df_inicio[, c("security_c","conformity_c","tradition_c")],
+                                        na.rm = TRUE)
+
+
+df_inicio$self_transcendenceR <- rowMeans(df_inicio[, c("universalism","benevolence")],
+                                         na.rm = TRUE)
+
+df_inicio$self_enhancementR  <- rowMeans(df_inicio[, c("achievement","power")],
+                                        na.rm = TRUE)
+
+df_inicio$openness_changeR   <- rowMeans(df_inicio[, c("selfdirection","stimulation","hedonism")],
+                                        na.rm = TRUE)
+
+df_inicio$conservationR      <- rowMeans(df_inicio[, c("security","conformity","tradition")],
+                                        na.rm = TRUE)
+
+
+library(ggplot2)
+library(tidyr)  # para pivotar datos
+
+# --- Pasar de wide a long para graficar ---
+df_long <- df_inicio %>%
+  select(self_transcendence, self_enhancement, openness_change, conservation) %>%
+  pivot_longer(cols = everything(),
+               names_to = "dimension",
+               values_to = "score")
+
+# --- Renombrar dimensiones para etiquetas más claras ---
+df_long$dimension <- factor(df_long$dimension,
+                            levels = c("self_transcendence", "self_enhancement",
+                                       "openness_change", "conservation"),
+                            labels = c("Self-Transcendence",
+                                       "Self-Enhancement",
+                                       "Openness to Change",
+                                       "Conservation"))
+
+# --- Graficar boxplot ---
+ggplot(df_long, aes(x = dimension, y = score, fill = dimension)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Higher-Order Human Values",
+       subtitle = "Based on centered value scores",
+       x = "Value Dimension",
+       y = "Centered Score (Relative Importance)") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 20, hjust = 1))
+
+```
+
+```{r values-factor}
+library(lavaan)
+# CFA model specification
+model_schwartz <- '
+  # Latent factors
+  benevolence1 =~ swval12 + swval18
+  universalism2 =~ swval03 + swval08 + swval19
+  selfdirection3 =~ swval01 + swval11
+  stimulation4 =~ swval06 + swval15
+  hedonism5 =~ swval10 + swval21
+  achievement6 =~ swval04 + swval13
+  power7 =~ swval02 + swval17
+  security8 =~ swval05 + swval14
+  conformity9 =~ swval07 + swval16
+  tradition10 =~ swval09 + swval20
+'
+
+# Fit CFA
+# fit_schwartz <- cfa(model_schwartz, data = df_inicio, std.lv = TRUE, missing = "ML")
+# fit_schwartz <- cfa(model_schwartz, data = df_inicio, 
+#                     ordered = names(select(df_inicio,starts_with("swval"))), 
+#                     estimator = "WLSMV")
+
+# Summary with fit indices and standardized loadings
+# summary(fit_schwartz, fit.measures = TRUE, standardized = TRUE)
+```
+
+# Social Cohesion Preferences
 
 ```{r}
-library(tidyr)
-library(dplyr)
+cohesion_vars<- names(df_inicio %>% select(starts_with("cohesion_")))
 
+c("Not at all","Rather not","In part","Rather so","Totally")
+
+for (i in cohesion_vars) {
+  df_inicio[[i]] <- car::recode(df_inicio[[i]],"c(6,7)=NA") 
+  df_inicio[[i]] <- sjlabelled::set_labels(df_inicio[[i]],labels = c("Not at all","Rather not","In part","Rather so","Totally"))
+}
+
+
+# For me, living well together in a society means that ...
+
+#01 … everyone has a place in society
+#02 … everyone can develop freely according to their abilities and inclinations
+#03 … all share the same values, customs, and traditions 
+#04 … people from different cultural backgrounds living together *
+#05 … everyone obeys law and order
+#06 … everyone can live the way they want to *
+#07 … differences of opinion are discussed and compromises are worked out 
+#08 … someone is there to show you the way 
+#09 … the families and neighbourhood are tightly knit 
+#10 … you can live life freely and independent from others
+#11 … everyone has an equal chance to influence political decisions 
+#11 … everyone is prepared to self-restrict for the good of society
+
+sjlabelled::set_label(df_inicio$cohesion_01) <- "everyone has a place in society"
+sjlabelled::set_label(df_inicio$cohesion_02) <- "everyone can develop freely according to their abilities and inclinations"
+sjlabelled::set_label(df_inicio$cohesion_03) <- "all share the same values, customs, and traditions"
+sjlabelled::set_label(df_inicio$cohesion_04) <- "people from different cultural backgrounds living together"
+sjlabelled::set_label(df_inicio$cohesion_05) <- "veryone obeys law and order"
+sjlabelled::set_label(df_inicio$cohesion_06) <- "everyone can live the way they want to"
+sjlabelled::set_label(df_inicio$cohesion_07) <- "differences of opinion are discussed and compromises are worked out"
+sjlabelled::set_label(df_inicio$cohesion_08) <- "someone is there to show you the way"
+sjlabelled::set_label(df_inicio$cohesion_09) <- "the families and neighbourhood are tightly knit"
+sjlabelled::set_label(df_inicio$cohesion_10) <- "you can live life freely and independent from others"
+sjlabelled::set_label(df_inicio$cohesion_11) <- "everyone has an equal chance to influence political decisions"
+sjlabelled::set_label(df_inicio$cohesion_12) <- "everyone is prepared to self-restrict for the good of society"
+
+val_labels <- 
+summary(df_inicio %>% select(starts_with("cohesion_")))
+
+corr_mat<- df_inicio %>% select(starts_with("cohesion_")) %>% psych::polychoric()
+
+corrplot::corrplot.mixed(corr_mat$rho)
+df_inicio %>% select(starts_with("cohesion_")) %>% psych::alpha()
+df_inicio %>% select(starts_with("cohesion_")) %>% psych::fa()
+
+df_for_fa<- df_inicio %>% select(starts_with("cohesion_"))
+
+# df_for_fa<- na.omit(df_for_fa)
+
+plot_stackfrq(df_for_fa)
+
+psych::fa(df_for_fa,nfactors = 1)
+
+model_cohesion<- 
+'cohesion=~cohesion_01+cohesion_02+cohesion_03+cohesion_04+cohesion_05+cohesion_06+
+          cohesion_07+cohesion_08+cohesion_09+cohesion_10+cohesion_11+cohesion_12'
+
+fit_cohesion <- cfa(model = model_cohesion,data = df_for_fa,ordered = cohesion_vars)
+summary(fit_cohesion,standardize=T,fit.measures = TRUE)
+```
+
+```{r}
+df_individuals <- df_inicio
+
+df_individuals<- df_individuals%>% select(pid=session,educat,isced,ideology_collapsed,income_ter,income_cua,income_qui,income_eq,
+                                 migration,religion,mrat,
+                                 self_transcendenceR, self_enhancementR, openness_changeR, conservationR,
+                                 self_transcendence, self_enhancement, openness_change, conservation,
+                                 starts_with("swval"))
+
+view_df(df_individuals)
+save(df_individuals,file = here::here("input/data/proc/df_individuals.Rdata"))
+```
+
+# Vignete data
+
+```{r}
 # Select and rename columns
-df_vig_long <- iniciadas %>%
+df_vig_long <- df_inicio %>%
   select(id = session, deck = ran_group, d1v1_p01:d15v9_p03)
 
 
@@ -277,40 +792,27 @@ names(df_vig_long_combined)
 
 ```
 
+```{r descriptive-vignete}
+plot_frq(df_vig_long_combined$friendship)
+plot_frq(df_vig_long_combined$cooperation)
+plot_frq(df_vig_long_combined$neighborhood)
 
-```{r}
-df_vig<- df_vig_long_combined
+plot_frq(df_vig_long_combined$friendship,type = "boxplot")
+plot_frq(df_vig_long_combined$cooperation,type = "boxplot")
+plot_frq(df_vig_long_combined$neighborhood,type = "boxplot")
 
-df_vig
+summary(df_vig_long_combined$friendship)
+summary(df_vig_long_combined$cooperation)
+summary(df_vig_long_combined$neighborhood)
 
-df_vig<- df_vig %>% left_join(df_inicio %>% select(pid=session,women,age_group,educat,isced),by = "pid")
-
-```
-
-
-```{r}
-plot_frq(df_vig$friendship)
-plot_frq(df_vig$cooperation)
-plot_frq(df_vig$neighborhood)
-
-plot_frq(df_vig$friendship,type = "boxplot")
-plot_frq(df_vig$cooperation,type = "boxplot")
-plot_frq(df_vig$neighborhood,type = "boxplot")
-
-summary(df_vig$friendship)
-summary(df_vig$cooperation)
-summary(df_vig$neighborhood)
-
-df_vig %>% select(friendship,cooperation,neighborhood) %>% 
+df_vig_long_combined %>% select(friendship,cooperation,neighborhood) %>% 
   correlation::correlation() %>% summary()
-
-df_vig %>% select(friendship,cooperation,neighborhood) %>% psych::alpha()
 
 # Load ggplot2
 library(ggplot2)
 # Reshape data into long format for ggplot2
 library(reshape2)
-data_long<- df_vig %>% select(Trust=friendship,Cooperation=cooperation,Conflict=neighborhood) %>% melt(., variable.name = "Dimension", value.name = "Value")
+data_long<- df_vig_long_combined %>% select(Trust=friendship,Cooperation=cooperation,Conflict=neighborhood) %>% melt(., variable.name = "Dimension", value.name = "Value")
 
 # Create density plot
 ggplot(data_long, aes(x = Value, fill = Dimension)) +
@@ -326,24 +828,22 @@ ggplot(data_long, aes(x = Value, fill = Dimension)) +
   theme(legend.position = "bottom")
 ```
 
-
 ## by Income 
 
 ```{r}
-frq(df_vig$vincome)
-df_vig$vincome <- factor(df_vig$vincome,levels = c(1,2,3),labels = c("Low","Middle","High"))
-
-model_income<- lm(friendship~factor(vincome),data = df_vig)
-plot_model(model_income,type = "est",show.values = T)
-plot_predictions(model_income,condition = "vincome")
-
-model_income<- lm(cooperation~factor(vincome),data = df_vig)
-plot_model(model_income,type = "est",show.values = T)
-plot_predictions(model_income,condition = "vincome")
-
-model_income<- lm(neighborhood~factor(vincome),data = df_vig)
-plot_model(model_income,type = "est",show.values = T)
-plot_predictions(model_income,condition = "vincome")
+frq(df_vig_long_combined$vincome)
+df_vig_long_combined$vincome <- factor(df_vig_long_combined$vincome,levels = c(1,2,3),labels = c("Low","Middle","High"))
+# model_income<- lm(friendship~factor(vincome),data = df_vig)
+# plot_model(model_income,type = "est",show.values = T)
+# plot_predictions(model_income,condition = "vincome")
+# 
+# model_income<- lm(cooperation~factor(vincome),data = df_vig)
+# plot_model(model_income,type = "est",show.values = T)
+# plot_predictions(model_income,condition = "vincome")
+# 
+# model_income<- lm(neighborhood~factor(vincome),data = df_vig)
+# plot_model(model_income,type = "est",show.values = T)
+# plot_predictions(model_income,condition = "vincome")
 ```
 
 - friendship:middle income individuals are more prefered than low income. But high income do not differ from low income individuals.
@@ -352,20 +852,20 @@ plot_predictions(model_income,condition = "vincome")
 ## by Education 
 
 ```{r}
-frq(df_vig$vedu)
-df_vig$vedu <- factor(df_vig$vedu,levels = 1:3,labels = c("Low","Middle","High"))
+frq(df_vig_long_combined$vedu)
+df_vig_long_combined$vedu <- factor(df_vig_long_combined$vedu,levels = 1:3,labels = c("Low","Middle","High"))
 
-model_educ <- lm(friendship~factor(vedu),data = df_vig) 
-plot_model(model_educ,type = "est",show.values = T)
-plot_predictions(model_educ,condition = "vedu")
-
-model_educ <- lm(cooperation~factor(vedu),data = df_vig) 
-plot_model(model_educ,type = "est",show.values = T)
-plot_predictions(model_educ,condition = "vedu")
-
-model_educ <- lm(neighborhood~factor(vedu),data = df_vig) 
-plot_model(model_educ,type = "est",show.values = T)
-plot_predictions(model_educ,condition = "vedu")
+# model_educ <- lm(friendship~factor(vedu),data = df_vig) 
+# plot_model(model_educ,type = "est",show.values = T)
+# plot_predictions(model_educ,condition = "vedu")
+# 
+# model_educ <- lm(cooperation~factor(vedu),data = df_vig) 
+# plot_model(model_educ,type = "est",show.values = T)
+# plot_predictions(model_educ,condition = "vedu")
+# 
+# model_educ <- lm(neighborhood~factor(vedu),data = df_vig) 
+# plot_model(model_educ,type = "est",show.values = T)
+# plot_predictions(model_educ,condition = "vedu")
 ```
 
 - there is a direct relation between education and trust, where middle and high education individuals are preferered compared to low educated.
@@ -373,22 +873,21 @@ plot_predictions(model_educ,condition = "vedu")
 ## by Religion
 
 ```{r}
-frq(df_vig$vrelig)
-df_vig$norelig <- factor(df_vig$vrelig,levels = 1:4,c("Catholic","Evangelical","Jewish","No confession"))
-df_vig$norelig <- relevel(factor(df_vig$norelig),ref = "No confession")
-frq(df_vig$norelig)
-
-model_religion<- lm(friendship~factor(norelig),data = df_vig)
-plot_model(model_religion,type = "est",show.values = T)
-plot_predictions(model_religion,condition = "norelig")
-
-model_religion<- lm(cooperation~factor(norelig),data = df_vig)
-plot_model(model_religion,type = "est",show.values = T)
-plot_predictions(model_religion,condition = "norelig")
-
-model_religion<- lm(neighborhood~factor(norelig),data = df_vig)
-plot_model(model_religion,type = "est",show.values = T)
-plot_predictions(model_religion,condition = "norelig")
+frq(df_vig_long_combined$vrelig)
+df_vig_long_combined$norelig <- factor(df_vig_long_combined$vrelig,levels = 1:4,c("Catholic","Evangelical","Jewish","No confession"))
+df_vig_long_combined$norelig <- relevel(factor(df_vig_long_combined$norelig),ref = "No confession")
+frq(df_vig_long_combined$norelig)
+# model_religion<- lm(friendship~factor(norelig),data = df_vig)
+# plot_model(model_religion,type = "est",show.values = T)
+# plot_predictions(model_religion,condition = "norelig")
+# 
+# model_religion<- lm(cooperation~factor(norelig),data = df_vig)
+# plot_model(model_religion,type = "est",show.values = T)
+# plot_predictions(model_religion,condition = "norelig")
+# 
+# model_religion<- lm(neighborhood~factor(norelig),data = df_vig)
+# plot_model(model_religion,type = "est",show.values = T)
+# plot_predictions(model_religion,condition = "norelig")
 ```
 
 - when compared to no religous individuals we observe that Christians do not differ, but Muslims and Jews are less liked in comparison to non-religious 
@@ -396,595 +895,136 @@ plot_predictions(model_religion,condition = "norelig")
 ## by Migration
 
 ```{r}
-frq(df_vig$vmigback)
-df_vig$vmigback <- factor(df_vig$vmigback,levels = 1:3,c("No migration background","2nd generation (Peruvian)","1. Generation (Venezuelan)"))
-model_migration<- lm(friendship~factor(vmigback),data = df_vig) 
-plot_model(model_migration,type = "est",show.values = T)
-plot_predictions(model_migration,condition = "vmigback")
-
-model_migration<- lm(cooperation~factor(vmigback),data = df_vig) 
-plot_model(model_migration,type = "est",show.values = T)
-plot_predictions(model_migration,condition = "vmigback")
-
-model_migration<- lm(neighborhood~factor(vmigback),data = df_vig) 
-plot_model(model_migration,type = "est",show.values = T)
-plot_predictions(model_migration,condition = "vmigback")
+frq(df_vig_long_combined$vmigback)
+df_vig_long_combined$vmigback <- factor(df_vig_long_combined$vmigback,levels = 1:3,c("No migration background","2nd generation (Peruvian)","1. Generation (Venezuelan)"))
+# model_migration<- lm(friendship~factor(vmigback),data = df_vig) 
+# plot_model(model_migration,type = "est",show.values = T)
+# plot_predictions(model_migration,condition = "vmigback")
+# 
+# model_migration<- lm(cooperation~factor(vmigback),data = df_vig) 
+# plot_model(model_migration,type = "est",show.values = T)
+# plot_predictions(model_migration,condition = "vmigback")
+# 
+# model_migration<- lm(neighborhood~factor(vmigback),data = df_vig) 
+# plot_model(model_migration,type = "est",show.values = T)
+# plot_predictions(model_migration,condition = "vmigback")
 ```
 
 - migration background does not affect trust 
 
-# by Political position
+## by Political position
 
 ```{r}
-frq(df_vig$vpolpos)
-df_vig$polcenter <- factor(df_vig$vpolpos,levels = 1:4,c("Left-wing","Center","Right-wing","Uninterested"))
-df_vig$polcenter <- relevel(factor(df_vig$polcenter),ref = "Center")
-frq(df_vig$polcenter)
-models_political<- lm(friendship~factor(polcenter),data = df_vig) 
-plot_model(models_political,type = "est",show.values = T)
-plot_predictions(models_political,condition = "polcenter")
-
-models_political<- lm(cooperation~factor(polcenter),data = df_vig) 
-plot_model(models_political,type = "est",show.values = T)
-plot_predictions(models_political,condition = "polcenter")
-
-models_political<- lm(neighborhood~factor(polcenter),data = df_vig) 
-plot_model(models_political,type = "est",show.values = T)
-plot_predictions(models_political,condition = "polcenter")
+frq(df_vig_long_combined$vpolpos)
+df_vig_long_combined$polcenter <- factor(df_vig_long_combined$vpolpos,levels = 1:4,c("Left-wing","Center","Right-wing","Uninterested"))
+df_vig_long_combined$polcenter <- relevel(factor(df_vig_long_combined$polcenter),ref = "Center")
+# frq(df_vig$polcenter)
+# models_political<- lm(friendship~factor(polcenter),data = df_vig) 
+# plot_model(models_political,type = "est",show.values = T)
+# plot_predictions(models_political,condition = "polcenter")
+# 
+# models_political<- lm(cooperation~factor(polcenter),data = df_vig) 
+# plot_model(models_political,type = "est",show.values = T)
+# plot_predictions(models_political,condition = "polcenter")
+# 
+# models_political<- lm(neighborhood~factor(polcenter),data = df_vig) 
+# plot_model(models_political,type = "est",show.values = T)
+# plot_predictions(models_political,condition = "polcenter")
 ```
 
 # by Human values
 
 ```{r}
-frq(df_vig$pvalue)
-df_vig$selftrans <- factor(df_vig$pvalue,levels = 1:4,c("Self-transcendence","Conservation","Self-enhancement","Openess to change"))
-frq(df_vig$selftrans)
-df_vig$selftrans <- factor(df_vig$selftrans,levels = c("Self-enhancement","Conservation","Openess to change","Self-transcendence"))
+frq(df_vig_long_combined$pvalue)
+df_vig_long_combined$selftrans <- factor(df_vig_long_combined$pvalue,levels = 1:4,c("Self-transcendence","Conservation","Self-enhancement","Openess to change"))
+frq(df_vig_long_combined$selftrans)
+df_vig_long_combined$selftrans <- factor(df_vig_long_combined$selftrans,levels = c("Self-enhancement","Conservation","Openess to change","Self-transcendence"))
 
-model_values <- lm(friendship~factor(selftrans),data = df_vig) 
-plot_model(model_values,type = "est",show.values = T)
-plot_predictions(model_values,condition = "selftrans")
-
-model_values <- lm(cooperation~factor(selftrans),data = df_vig) 
-plot_model(model_values,type = "est",show.values = T)
-plot_predictions(model_values,condition = "selftrans")
-
-model_values <- lm(neighborhood~factor(selftrans),data = df_vig) 
-plot_model(model_values,type = "est",show.values = T)
-plot_predictions(model_values,condition = "selftrans")
+# model_values <- lm(friendship~factor(selftrans),data = df_vig) 
+# plot_model(model_values,type = "est",show.values = T)
+# plot_predictions(model_values,condition = "selftrans")
+# 
+# model_values <- lm(cooperation~factor(selftrans),data = df_vig) 
+# plot_model(model_values,type = "est",show.values = T)
+# plot_predictions(model_values,condition = "selftrans")
+# 
+# model_values <- lm(neighborhood~factor(selftrans),data = df_vig) 
+# plot_model(model_values,type = "est",show.values = T)
+# plot_predictions(model_values,condition = "selftrans")
 ```
 
-# by Gender
+## by Gender
 
 ```{r}
-frq(df_vig$vgender)
-df_vig$vgender<- factor(df_vig$vgender,c(1,2),c("Male","Female")) 
-model_gender <- lm(friendship~factor(vgender),data = df_vig) 
-plot_model(model_gender,type = "est",show.values = T)
-plot_predictions(model_gender,condition = "vgender")
-
-model_gender <- lm(cooperation~factor(vgender),data = df_vig) 
-plot_model(model_gender,type = "est",show.values = T)
-plot_predictions(model_gender,condition = "vgender")
-
-model_gender <- lm(neighborhood~factor(vgender),data = df_vig) 
-plot_model(model_gender,type = "est",show.values = T)
-plot_predictions(model_gender,condition = "vgender")
+frq(df_vig_long_combined$vgender)
+df_vig_long_combined$vgender<- factor(df_vig_long_combined$vgender,c(1,2),c("Male","Female")) 
+# model_gender <- lm(friendship~factor(vgender),data = df_vig) 
+# plot_model(model_gender,type = "est",show.values = T)
+# plot_predictions(model_gender,condition = "vgender")
+# 
+# model_gender <- lm(cooperation~factor(vgender),data = df_vig) 
+# plot_model(model_gender,type = "est",show.values = T)
+# plot_predictions(model_gender,condition = "vgender")
+# 
+# model_gender <- lm(neighborhood~factor(vgender),data = df_vig) 
+# plot_model(model_gender,type = "est",show.values = T)
+# plot_predictions(model_gender,condition = "vgender")
 ```
 
 - women are more liked than men
 
-# by Age
+## by Age
 
 ```{r}
-frq(df_vig$vage)
-df_vig$vage <- factor(df_vig$vage,1:3,labels = c("25 years","45 years","65 years"))
-model_age <- lm(friendship~factor(vage),data = df_vig) 
-plot_model(model_age,type = "est",show.values = T)
-plot_predictions(model_age,condition = "vage")
-
-model_age <- lm(cooperation~factor(vage),data = df_vig) 
-plot_model(model_age,type = "est",show.values = T)
-plot_predictions(model_age,condition = "vage")
-
-model_age <- lm(neighborhood~factor(vage),data = df_vig) 
-plot_model(model_age,type = "est",show.values = T)
-plot_predictions(model_age,condition = "vage")
+frq(df_vig_long_combined$vage)
+df_vig_long_combined$vage <- factor(df_vig_long_combined$vage,1:3,labels = c("25 years","45 years","65 years"))
+# model_age <- lm(friendship~factor(vage),data = df_vig) 
+# plot_model(model_age,type = "est",show.values = T)
+# plot_predictions(model_age,condition = "vage")
+# 
+# model_age <- lm(cooperation~factor(vage),data = df_vig) 
+# plot_model(model_age,type = "est",show.values = T)
+# plot_predictions(model_age,condition = "vage")
+# 
+# model_age <- lm(neighborhood~factor(vage),data = df_vig) 
+# plot_model(model_age,type = "est",show.values = T)
+# plot_predictions(model_age,condition = "vage")
 ```
 
 - no age differences
 
-# by Employment status
+## by Employment status
 
 ```{r}
-frq(df_vig$vempstat)
-df_vig$vempstat <- factor(df_vig$vempstat,c(1,2,3),c("Employed","Unemployed","Homemaker"))
-model_age <- lm(friendship~factor(vempstat),data = df_vig) 
-plot_model(model_age,type = "est",show.values = T)
-plot_predictions(model_age,condition = "vempstat")
-
-model_age <- lm(cooperation~factor(vempstat),data = df_vig) 
-plot_model(model_age,type = "est",show.values = T)
-plot_predictions(model_age,condition = "vempstat")
-
-model_age <- lm(neighborhood~factor(vempstat),data = df_vig) 
-plot_model(model_age,type = "est",show.values = T)
-plot_predictions(model_age,condition = "vempstat")
+frq(df_vig_long_combined$vempstat)
+df_vig_long_combined$vempstat <- factor(df_vig_long_combined$vempstat,c(1,2,3),c("Employed","Unemployed","Homemaker"))
+# model_age <- lm(friendship~factor(vempstat),data = df_vig) 
+# plot_model(model_age,type = "est",show.values = T)
+# plot_predictions(model_age,condition = "vempstat")
+# 
+# model_age <- lm(cooperation~factor(vempstat),data = df_vig) 
+# plot_model(model_age,type = "est",show.values = T)
+# plot_predictions(model_age,condition = "vempstat")
+# 
+# model_age <- lm(neighborhood~factor(vempstat),data = df_vig) 
+# plot_model(model_age,type = "est",show.values = T)
+# plot_predictions(model_age,condition = "vempstat")
 ```
 
 - employed people are more liked than unemployed and homemakers
 
 
-```{r}
-df_vig_CL <- df_vig 
-save(df_vig_CL,file = here::here("input/data/proc/df_vig_CL.Rdata"))
-```
+# Save merged data
+```{r merge-vig-respondent}
+df_vig<- df_vig_long_combined # Vignete data
 
-
-# Models: Trust
-
-1)	Imagine you know person [ID] through your circle of acquaintances. How likely is it that you would get along with person [ID]? 
-```{r}
-if (!require("pacman")) install.packages("pacman") # instalar pacman
-                            # cargar librerias
-pacman::p_load(dplyr,       # Manipulacion de datos 
-               haven,       # importar datos en .dta o .sav
-               car,         # recodificar variables
-               sjlabelled,  # etiquetado de variables
-               sjmisc,      # descriptivos y frecuencias
-               sjPlot,      # tablas, plots y descriptivos
-               summarytools,# resumen de dataframe
-               likert,
-               ggplot2,
-               here,
-               marginaleffects,
-               texreg,
-               panelr
-               )
-load(file = here::here("input/data/proc/df_vig_CL.Rdata"))
-load(file = here::here("input/data/original/survey-edumer/completas-270125.RData"))
-load(file = here::here("input/data/original/survey-edumer/iniciadas-280125.RData"))
-
-df_vig <- df_vig_CL
-
-frq(iniciadas$carac_a08)
-iniciadas$ideology <- factor(iniciadas$carac_a08,
-  levels = 1:9,
-  labels = c(
-    "Derecha",
-    "Centro derecha",
-    "Centro",
-    "Centro izquierda",
-    "Izquierda",
-    "Independiente",
-    "Ninguna",
-    "No sé",
-    "Preferiría no responder"
-  )
-)
-
-iniciadas$ideology_collapsed <- dplyr::case_when(
-  iniciadas$ideology %in% c("Izquierda", "Centro izquierda") ~ "Left",
-  iniciadas$ideology %in% c("Centro", "Centro derecha") ~ "Center",
-  iniciadas$ideology == "Derecha" ~ "Right",
-  iniciadas$ideology %in% c("Independiente", "Ninguna", "No sé", "Preferiría no responder") ~ "Non-Partisan",
-  TRUE ~ NA_character_  # Catch any unexpected or missing cases
-)
-
-# Turn into a factor, optionally order levels
-iniciadas$ideology_collapsed <- factor(
-  iniciadas$ideology_collapsed,
-  levels = c("Left", "Center", "Right", "Non-Partisan")
-)
-
-frq(iniciadas$ideology_collapsed)
-
-iniciadas$pid <- iniciadas$session
-
-df_vig <- 
-df_vig  %>% 
-  left_join(iniciadas %>% select(pid,ideology_collapsed),by="pid")
-
+df_vig<- df_vig %>% 
+  left_join(df_inicio %>% select(pid=session,female,age_group,educat,isced,ideology_collapsed,income_ter,income_cua,income_qui,income_eq,
+                                 migration,religion,
+                                 self_transcendence, self_enhancement, openness_change, conservation,
+                                 starts_with("swval")),
+            by = "pid")
 df_vig_CL <- df_vig
-
+view_df(df_vig_CL)
 save(df_vig_CL,file = here::here("input/data/proc/df_vig_CL.Rdata"))
 ```
-
-```{r}
-set1 <-  RColorBrewer::brewer.pal(n = 8, name = "Set1")
-options(ggplot2.discrete.fill = set1) 
-options(ggplot2.discrete.colour = set1) 
-ggplot2::theme_set(ggplot2::theme_bw()) 
-ggplot2::theme_update(text=ggplot2::element_text(size=15,  family="serif"))
-options(scipen=999)
-library(estimatr)
-library(plm)
-
-load(file = here::here("input/data/proc/df_vig_CL.Rdata"))
-
-df_vig<- df_vig_CL
-df_vig$friendship_z <- scale(df_vig$friendship)
-
-lm_vincome <- lm_robust(friendship_z~factor(vincome),data = df_vig,clusters = pid)
-lm_veduc <- lm_robust(friendship_z~factor(vedu),data = df_vig,clusters = pid)
-lm_socioeconomic <- lm_robust(friendship_z~factor(vedu)+factor(vincome),data = df_vig,clusters = pid)
-
-socioeconomic <- list(lm_vincome,lm_veduc,lm_socioeconomic)
-
-lm_vreligion <- lm_robust(friendship_z~norelig,data = df_vig,clusters = pid)
-lm_vmigration <- lm_robust(friendship_z~factor(vmigback),data = df_vig,clusters = pid)
-lm_sociocultural <- lm_robust(friendship_z~norelig+factor(vmigback),data = df_vig,clusters = pid)
-sociocultural <- list(lm_vreligion,lm_vmigration,lm_sociocultural)
-
-screenreg(sociocultural,include.ci=F)
-
-lm_vpolcenter <- lm_robust(friendship_z~polcenter,data = df_vig,clusters = pid)
-lm_vhumvalues <- lm_robust(friendship_z~selftrans,data = df_vig,clusters = pid)
-lm_political_values <- lm_robust(friendship_z~polcenter+selftrans,data = df_vig,clusters = pid)
-political_values <- list(lm_vpolcenter,lm_vhumvalues,lm_political_values)
-
-screenreg(political_values,include.ci=F)
-
-lm_SES <- plm(friendship_z~vincome+vedu,data = df_vig,index = "pid")
-lm_SES_rel <- plm(friendship_z~vincome+vedu+norelig,data = df_vig,index = "pid")
-lm_SES_rel_mig <- plm(friendship_z~vincome+vedu+norelig+vmigback,data = df_vig,index = "pid")
-lm_SES_rel_mig_pol <- plm(friendship_z~vincome+vedu+norelig+vmigback+polcenter,data = df_vig,index = "pid")
-lm_SES_rel_mig_pol_values <- plm(friendship_z~vincome+vedu+norelig+vmigback+polcenter+selftrans,data = df_vig,index = "pid")
-lm_SES_rel_mig_pol_values_controls <- plm(friendship_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
-
-models_friendship<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
-screenreg(models_friendship,include.ci=F)
-
-
-df_vig$edu_group <- car::recode(as.numeric(df_vig$isced), "
-  1 = 'Low';
-  2:5 = 'Middle';
-  6:7 = 'High'
-")
-
-
-lm_friendship_mod <- lmer(friendship_z~vincome+vedu+educat+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat +(1|pid),data = df_vig)
-lm_friendship_mod1 <- lmer(friendship_z~vincome+vedu*educat+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat +(vedu|pid),data = df_vig)
-
-lm_friendship_mod2 <- lmer(friendship_z~vincome+vedu+norelig+vmigback+polcenter*ideology_collapsed+selftrans+vgender+vage+vempstat +(polcenter|pid),data = df_vig)
-
-screenreg(list(lm_friendship_mod1,lm_friendship_mod2))
-
-plot_predictions(lm_friendship_mod1, condition = c("vedu", "educat"),draw = T)
-
-df_plot_educ <- plot_predictions(lm_friendship_mod1, condition = c("vedu", "educat"),draw = F)
-df_plot_poli <- plot_predictions(lm_friendship_mod2, condition = c("polcenter", "ideology_collapsed"),draw = F)
-
-
-# names(df_pred1) 
-df_plot_educ %>%
-  filter(educat %in% c("Universitary","Primary")) %>% 
-ggplot(aes(y =estimate,x=vedu, fill=educat, group=educat,color=educat,ymin=conf.low, ymax=conf.high)) +
-  geom_errorbar(width=0.02,linetype="solid") +
-  geom_line(size=1) +
-  geom_point(size=2) +
-  scale_color_manual(values=c("#323232","#989898","#CCCCCC","red"))+
-  scale_y_continuous(limits = c(-1,1))+
-  labs(caption = paste0("Note: N (observations) = ",nobs(lm_friendship_mod1),"; N (individuals) = ",lme4::ngrps(lm_friendship_mod1),". Predictive estimates with 95% confidence intervals"),
-       x="Education (Vignette)",y="Trust (z-score)",
-       color="Education\n(Respondent)",
-       fill="Education\n(Respondent)") +
-  theme(legend.position = "right")
-
-ggsave(plot = last_plot(),filename = "figure001.png",device = "png",
-       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 12)
-
-
-df_plot_poli$polcenter <- factor(df_plot_poli$polcenter,levels = c("Uninterested","Left-wing", "Center", "Right-wing"))
-
-# names(df_pred1) 
-df_plot_poli %>%
-ggplot(aes(y =estimate,x=polcenter, fill=ideology_collapsed, group=ideology_collapsed,color=ideology_collapsed,ymin=conf.low, ymax=conf.high)) +
-  geom_errorbar(width=0.1,linetype="solid",position=position_dodge(width=0.4)) +
-  # geom_line(size=1) +
-  geom_point(size=2,position=position_dodge(width=0.4)) +
-  scale_color_manual(values=c("red","purple","blue","darkgray"))+
-  scale_y_continuous(limits = c(-1,1.2))+
-  labs(caption = paste0("Note: N (observations) = ",nobs(lm_friendship_mod1),"; N (individuals) = ",lme4::ngrps(lm_friendship_mod1),". Predictive estimates with 95% confidence intervals"),
-       x="Political (Vignette)",y="Trust (z-score)",
-       color="Political\n(Respondent)",
-       fill="Political\n(Respondent)") +
-  theme(legend.position = "right")
-
-
-ggsave(plot = last_plot(),filename = "figure002.png",device = "png",
-       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 12)
-
-# Extract coefficients and confidence intervals using broom
-coef_data <- broom::tidy(models_friendship[[6]], conf.int = TRUE)
-coef_data <- coef_data %>% filter(term %in% c(
-  "vincomeMiddle", "vincomeHigh", "veduMiddle", "veduHigh", 
-  "noreligCatholic", "noreligEvangelical", "noreligJewish", 
-  "vmigback2nd generation (Peruvian)", "vmigback1. Generation (Venezuelan)", 
-  "polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested", 
-  "selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence"))
-
-coef_data <-coef_data %>%  add_row(term = "Income (ref: $500K)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 1)
-coef_data <-coef_data %>%  add_row(term = "Education (ref: Primary)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 4) 
-coef_data <-coef_data %>%  add_row(term = "Religion (ref: Non-religious)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 7)
-coef_data <-coef_data %>%  add_row(term = "Migration (ref: No-mig. back.)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 11)
-coef_data <-coef_data %>%  add_row(term = "Political pos. (ref: Center)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 14)
-coef_data <-coef_data %>%  add_row(term = "Values (ref: Self-enhancement)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 18)
-
-coef_data$term <- factor(coef_data$term,
-                         levels = rev(
-                           c("Income (ref: $500K)","vincomeMiddle", "vincomeHigh",
-                             "Education (ref: Primary)","veduMiddle", "veduHigh",
-                             "Religion (ref: Non-religious)","noreligCatholic", "noreligEvangelical", "noreligJewish",
-                             "Migration (ref: No-mig. back.)","vmigback2nd generation (Peruvian)", "vmigback1. Generation (Venezuelan)",
-                             "Political pos. (ref: Center)","polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested",
-                             "Values (ref: Self-enhancement)","selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence")),
-  labels = 
-    rev(c("Income (ref: $500K)","$910K", "$4100K", 
-          "Education (ref: Primary)","Secondary Education", "University Education",
-          "Religion (ref: Non-religious)","Catholic", "Evangelical", "Jewish",
-          "Migration (ref: No-mig. back.)","2nd generation (Peruvian)", "1st. Generation (Venezuelan)",
-          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
-          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")))
-
-library(ggthemes)
-# Create the coefficient plot
-ggplot(coef_data, aes(x = estimate, y = term)) +
-  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "darkgray",size=1) +  # Confidence intervals
-  geom_point(size = 3, color = "black") +  # Points for coefficient estimates
-  geom_vline(xintercept = 0,color="red",size=1) +
-  labs(title = "[Trust]: Imagine you know person [ID] through your circle of acquaintances.\nHow likely is it that you would get along with person [ID]?",
-       subtitle = "Not likely at all ←                                                                          → Absolutely likely",
-    x = "Standardized coefficient",
-    y =NULL
-  ) +
-  scale_x_continuous(limits = c(-0.65,0.65)) +
-theme_minimal(base_family = "Roboto Condensed", base_size = 12) +
-  theme(panel.grid.minor = element_blank(),
-        # Bold, bigger title
-        plot.title = element_text(face = "bold", size = rel(1)),
-        # Plain, slightly bigger subtitle that is grey
-        plot.subtitle = element_text(face = "plain", size = rel(1), color = "grey70"),
-        # Italic, smaller, grey caption that is left-aligned
-        plot.caption = element_text(face = "italic", size = rel(0.7), 
-                                    color = "grey70", hjust = 0),
-        # Bold legend titles
-        legend.title = element_text(face = "bold"),
-        # Bold, slightly larger facet titles that are left-aligned for the sake of repetition
-        strip.text = element_text(face = "bold", size = rel(1.1), hjust = 0),
-        # Bold axis titles
-        axis.title = element_text(face = "bold"),
-        # Add some space above the x-axis title and make it left-aligned
-        axis.title.x = element_text(margin = margin(t = 10), hjust = 0),
-        # Add some space to the right of the y-axis title and make it top-aligned
-        axis.title.y = element_text(margin = margin(r = 10), hjust = 1))+
-  theme(
-    axis.text.y = element_text(hjust = 1,size = 13),
-    plot.subtitle = element_text(hjust = 0.5)
-  )
-
-ggsave(plot = last_plot(),filename = "fig_coefplot_friendship_CL.png",device = "png",path = "output/images/",width = 2.5,height = 2.,units = "cm",scale = 10)
-```
-
-
-
-# Models: Cooperation
-
-2) Imagine you are faced with a task that you cannot perform on your own. How likely would you be to ask the person [ID] for help? 
-
-```{r}
-library(estimatr)
-df_vig$cooperation_z <- scale(df_vig$cooperation);summary(df_vig$cooperation_z)
-lm_vincome <- lm_robust(cooperation_z~factor(vincome),data = df_vig,clusters = pid)
-lm_veduc <- lm_robust(cooperation_z~factor(vedu),data = df_vig,clusters = pid)
-lm_socioeconomic <- lm_robust(cooperation_z~factor(vedu)+factor(vincome),data = df_vig,clusters = pid)
-
-socioeconomic <- list(lm_vincome,lm_veduc,lm_socioeconomic)
-screenreg(socioeconomic,include.ci=F)
-
-lm_vreligion <- lm_robust(cooperation_z~norelig,data = df_vig,clusters = pid)
-lm_vmigration <- lm_robust(cooperation_z~factor(vmigback),data = df_vig,clusters = pid)
-lm_sociocultural <- lm_robust(cooperation_z~norelig+factor(vmigback),data = df_vig,clusters = pid)
-sociocultural <- list(lm_vreligion,lm_vmigration,lm_sociocultural)
-
-screenreg(sociocultural,include.ci=F)
-
-lm_vpolcenter <- lm_robust(cooperation_z~polcenter,data = df_vig,clusters = pid)
-lm_vhumvalues <- lm_robust(cooperation_z~selftrans,data = df_vig,clusters = pid)
-lm_political_values <- lm_robust(cooperation_z~polcenter+selftrans,data = df_vig,clusters = pid)
-political_values <- list(lm_vpolcenter,lm_vhumvalues,lm_political_values)
-
-screenreg(political_values,include.ci=F)
-
-library(plm)
-lm_SES <- plm(cooperation_z~vincome+vedu,data = df_vig,index = "pid")
-lm_SES_rel <- plm(cooperation_z~vincome+vedu+norelig,data = df_vig,index = "pid")
-lm_SES_rel_mig <- plm(cooperation_z~vincome+vedu+norelig+vmigback,data = df_vig,index = "pid")
-lm_SES_rel_mig_pol <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter,data = df_vig,index = "pid")
-lm_SES_rel_mig_pol_values <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter+selftrans,data = df_vig,index = "pid")
-lm_SES_rel_mig_pol_values_controls <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
-
-models_cooperation<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
-screenreg(models_cooperation,include.ci=F)
-
-# Extract coefficients and confidence intervals using broom
-coef_data <- broom::tidy(models_cooperation[[6]], conf.int = TRUE)
-coef_data <- coef_data %>% filter(term %in% c(
-  "vincomeMiddle", "vincomeHigh", "veduMiddle", "veduHigh", 
-  "noreligCatholic", "noreligEvangelical", "noreligJewish", 
-  "vmigback2nd generation (Peruvian)", "vmigback1. Generation (Venezuelan)", 
-  "polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested", 
-  "selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence"))
-
-coef_data <-coef_data %>%  add_row(term = "Income (ref: $500K)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 1)
-coef_data <-coef_data %>%  add_row(term = "Education (ref: Primary)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 4) 
-coef_data <-coef_data %>%  add_row(term = "Religion (ref: Non-religious)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 7)
-coef_data <-coef_data %>%  add_row(term = "Migration (ref: No-mig. back.)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 11)
-coef_data <-coef_data %>%  add_row(term = "Political pos. (ref: Center)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 14)
-coef_data <-coef_data %>%  add_row(term = "Values (ref: Self-enhancement)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 18)
-
-coef_data$term <- factor(coef_data$term,
-                         levels = rev(
-                           c("Income (ref: $500K)","vincomeMiddle", "vincomeHigh",
-                             "Education (ref: Primary)","veduMiddle", "veduHigh",
-                             "Religion (ref: Non-religious)","noreligCatholic", "noreligEvangelical", "noreligJewish",
-                             "Migration (ref: No-mig. back.)","vmigback2nd generation (Peruvian)", "vmigback1. Generation (Venezuelan)",
-                             "Political pos. (ref: Center)","polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested",
-                             "Values (ref: Self-enhancement)","selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence")),
-  labels = 
-    rev(c("Income (ref: $500K)","$910K", "$4100K", 
-          "Education (ref: Primary)","Secondary Education", "University Education",
-          "Religion (ref: Non-religious)","Catholic", "Evangelical", "Jewish",
-          "Migration (ref: No-mig. back.)","2nd generation (Peruvian)", "1st. Generation (Venezuelan)",
-          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
-          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")))
-
-library(ggthemes)
-# Create the coefficient plot
-ggplot(coef_data, aes(x = estimate, y = term)) +
-  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "darkgray",size=1) +  # Confidence intervals
-  geom_point(size = 3, color = "black") +  # Points for coefficient estimates
-  geom_vline(xintercept = 0,color="red",size=1) +
-  labs(title = "[Cooperation]:Imagine you are faced with a task that you cannot perform on your own.\nHow likely would you be to ask the person [ID] for help?",
-       subtitle = "Not likely at all ←                                                                          → Absolutely likely",
-    x = "Standardized coefficient",
-    y =NULL
-  ) +
-  # scale_x_continuous(limits = c(-0.65,0.65)) +
-theme_minimal(base_family = "Roboto Condensed", base_size = 12) +
-  theme(panel.grid.minor = element_blank(),
-        # Bold, bigger title
-        plot.title = element_text(face = "bold", size = rel(1)),
-        # Plain, slightly bigger subtitle that is grey
-        plot.subtitle = element_text(face = "plain", size = rel(1), color = "grey70"),
-        # Italic, smaller, grey caption that is left-aligned
-        plot.caption = element_text(face = "italic", size = rel(0.7), 
-                                    color = "grey70", hjust = 0),
-        # Bold legend titles
-        legend.title = element_text(face = "bold"),
-        # Bold, slightly larger facet titles that are left-aligned for the sake of repetition
-        strip.text = element_text(face = "bold", size = rel(1.1), hjust = 0),
-        # Bold axis titles
-        axis.title = element_text(face = "bold"),
-        # Add some space above the x-axis title and make it left-aligned
-        axis.title.x = element_text(margin = margin(t = 10), hjust = 0),
-        # Add some space to the right of the y-axis title and make it top-aligned
-        axis.title.y = element_text(margin = margin(r = 10), hjust = 1))+
-  theme(
-    axis.text.y = element_text(hjust = 1,size = 13),
-    plot.subtitle = element_text(hjust = 0.5)
-  )
-
-ggsave(plot = last_plot(),filename = "fig_coefplot_cooperation_CL.png",device = "png",path = "output/images/",width = 2.5,height = 2.,units = "cm",scale = 10)
-```
-
-# Models: Neighboorhood conflict
-
-3)	Imagine that person [ID] moves into your neighborhood. How likely is it that you would come into conflict with that person?
-
-```{r}
-library(estimatr)
-df_vig$neighborhood_z <- scale(df_vig$neighborhood);summary(df_vig$neighborhood)
-lm_vincome <- lm_robust(neighborhood_z~factor(vincome),data = df_vig,clusters = pid)
-lm_veduc <- lm_robust(neighborhood_z~factor(vedu),data = df_vig,clusters = pid)
-lm_socioeconomic <- lm_robust(neighborhood_z~factor(vedu)+factor(vincome),data = df_vig,clusters = pid)
-
-socioeconomic <- list(lm_vincome,lm_veduc,lm_socioeconomic)
-screenreg(socioeconomic,include.ci=F)
-
-lm_vreligion <- lm_robust(neighborhood_z~norelig,data = df_vig,clusters = pid)
-lm_vmigration <- lm_robust(neighborhood_z~factor(vmigback),data = df_vig,clusters = pid)
-lm_sociocultural <- lm_robust(neighborhood_z~norelig+factor(vmigback),data = df_vig,clusters = pid)
-sociocultural <- list(lm_vreligion,lm_vmigration,lm_sociocultural)
-screenreg(sociocultural,include.ci=F)
-
-lm_vpolcenter <- lm_robust(neighborhood_z~polcenter,data = df_vig,clusters = pid)
-lm_vhumvalues <- lm_robust(neighborhood_z~selftrans,data = df_vig,clusters = pid)
-lm_political_values <- lm_robust(neighborhood_z~polcenter+selftrans,data = df_vig,clusters = pid)
-political_values <- list(lm_vpolcenter,lm_vhumvalues,lm_political_values)
-
-screenreg(political_values,include.ci=F)
-
-library(plm)
-lm_SES <- plm(neighborhood_z~vincome+vedu,data = df_vig,index = "pid")
-lm_SES_rel <- plm(neighborhood_z~vincome+vedu+norelig,data = df_vig,index = "pid")
-lm_SES_rel_mig <- plm(neighborhood_z~vincome+vedu+norelig+vmigback,data = df_vig,index = "pid")
-lm_SES_rel_mig_pol <- plm(neighborhood_z~vincome+vedu+norelig+vmigback+polcenter,data = df_vig,index = "pid")
-lm_SES_rel_mig_pol_values <- plm(neighborhood_z~vincome+vedu+norelig+vmigback+polcenter+selftrans,data = df_vig,index = "pid")
-lm_SES_rel_mig_pol_values_controls <- plm(neighborhood_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
-
-models_neighborhood<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
-screenreg(models_neighborhood,include.ci=F)
-
-# Extract coefficients and confidence intervals using broom
-coef_data <- broom::tidy(models_neighborhood[[6]], conf.int = TRUE)
-coef_data <- coef_data %>% filter(term %in% c(
-  "vincomeMiddle", "vincomeHigh", "veduMiddle", "veduHigh", 
-  "noreligCatholic", "noreligEvangelical", "noreligJewish", 
-  "vmigback2nd generation (Peruvian)", "vmigback1. Generation (Venezuelan)", 
-  "polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested", 
-  "selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence"))
-
-coef_data <-coef_data %>%  add_row(term = "Income (ref: $500K)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 1)
-coef_data <-coef_data %>%  add_row(term = "Education (ref: Primary)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 4) 
-coef_data <-coef_data %>%  add_row(term = "Religion (ref: Non-religious)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 7)
-coef_data <-coef_data %>%  add_row(term = "Migration (ref: No-mig. back.)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 11)
-coef_data <-coef_data %>%  add_row(term = "Political pos. (ref: Center)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 14)
-coef_data <-coef_data %>%  add_row(term = "Values (ref: Self-enhancement)",estimate = NA,conf.low = NA,conf.high = NA,std.error = NA,.before = 18)
-
-coef_data$term <- factor(coef_data$term,
-                         levels = rev(
-                           c("Income (ref: $500K)","vincomeMiddle", "vincomeHigh",
-                             "Education (ref: Primary)","veduMiddle", "veduHigh",
-                             "Religion (ref: Non-religious)","noreligCatholic", "noreligEvangelical", "noreligJewish",
-                             "Migration (ref: No-mig. back.)","vmigback2nd generation (Peruvian)", "vmigback1. Generation (Venezuelan)",
-                             "Political pos. (ref: Center)","polcenterLeft-wing", "polcenterRight-wing", "polcenterUninterested",
-                             "Values (ref: Self-enhancement)","selftransConservation", "selftransOpeness to change", "selftransSelf-transcendence")),
-  labels = 
-    rev(c("Income (ref: $500K)","$910K", "$4100K", 
-          "Education (ref: Primary)","Secondary Education", "University Education",
-          "Religion (ref: Non-religious)","Catholic", "Evangelical", "Jewish",
-          "Migration (ref: No-mig. back.)","2nd generation (Peruvian)", "1st. Generation (Venezuelan)",
-          "Political pos. (ref: Center)","Left-wing", "Right-wing", "Uninterested",
-          "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")))
-
-library(ggthemes)
-# Create the coefficient plot
-ggplot(coef_data, aes(x = estimate, y = term)) +
-  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "darkgray",size=1) +  # Confidence intervals
-  geom_point(size = 3, color = "black") +  # Points for coefficient estimates
-  geom_vline(xintercept = 0,color="red",size=1) +
-  labs(title = "[Conflict]:Imagine that person [ID] moves into your neighborhood. \nHow likely is it that you would come into conflict with that person?",
-       subtitle = "Not likely at all ←                                                                          → Absolutely likely",
-    x = "Standardized coefficient",
-    y =NULL
-  ) +
-  # scale_x_continuous(limits = c(-0.65,0.65)) +
-theme_minimal(base_family = "Roboto Condensed", base_size = 12) +
-  theme(panel.grid.minor = element_blank(),
-        # Bold, bigger title
-        plot.title = element_text(face = "bold", size = rel(1)),
-        # Plain, slightly bigger subtitle that is grey
-        plot.subtitle = element_text(face = "plain", size = rel(1), color = "grey70"),
-        # Italic, smaller, grey caption that is left-aligned
-        plot.caption = element_text(face = "italic", size = rel(0.7), 
-                                    color = "grey70", hjust = 0),
-        # Bold legend titles
-        legend.title = element_text(face = "bold"),
-        # Bold, slightly larger facet titles that are left-aligned for the sake of repetition
-        strip.text = element_text(face = "bold", size = rel(1.1), hjust = 0),
-        # Bold axis titles
-        axis.title = element_text(face = "bold"),
-        # Add some space above the x-axis title and make it left-aligned
-        axis.title.x = element_text(margin = margin(t = 10), hjust = 0),
-        # Add some space to the right of the y-axis title and make it top-aligned
-        axis.title.y = element_text(margin = margin(r = 10), hjust = 1))+
-  theme(
-    axis.text.y = element_text(hjust = 1,size = 13),
-    plot.subtitle = element_text(hjust = 0.5)
-  )
-
-ggsave(plot = last_plot(),filename = "fig_coefplot_neighborhood_CL.png",device = "png",path = "output/images/",width = 2.5,height = 2,units = "cm",scale = 10)
-```
-
-

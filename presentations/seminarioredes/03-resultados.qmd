@@ -1,0 +1,42 @@
+# Results {background-color="#491106ff"}
+
+## Social groups and social cohesion
+
+```{r , echo=FALSE, out.width="75%"}
+knitr::include_graphics("images/fig_coefplot_friendship_CL.png")
+```
+
+## Cross-group interactions (Income)
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/figure001_CL.png")
+```
+
+## Cross-group interactions (Education)
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/figure002_CL.png")
+```
+
+## Cross-group interactions (Migration)
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/figure003_CL.png")
+```
+
+## Cross-group interactions (Religion)
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/figure004_CL.png")
+```
+
+## Cross-group interactions (Political)
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/figure005_CL.png")
+```
+
+## Cross-group interactions (Values)
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/figure006_CL.png")
+```

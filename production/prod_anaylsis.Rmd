@@ -22,6 +22,7 @@ knitr::opts_chunk$set(warning = FALSE,
                       echo = TRUE 
                       )
 options(scipen=9999) # desactivar notacion cientifica
+
 ```
 
 ## Librerías
@@ -43,7 +44,12 @@ pacman::p_load(dplyr,       # Manipulacion de datos
                texreg,
                panelr
                )
-
+set1 <-  RColorBrewer::brewer.pal(n = 8, name = "Set1")
+options(ggplot2.discrete.fill = set1) 
+options(ggplot2.discrete.colour = set1) 
+ggplot2::theme_set(ggplot2::theme_bw()) 
+ggplot2::theme_update(text=ggplot2::element_text(size=15,  family="serif"))
+options(scipen=999)
 ```
 
 
@@ -204,11 +210,20 @@ coef_data_CL$country <- "Chile"
 
 coef_data_CL_DE<-bind_rows(coef_data_CL,coef_data_DE)
 
+# value_labels<- 
+# c("**Income (ref: Low)**","Middle", "High", 
+#           "**Education (ref: Low)**","Middle Ed", "High Ed",
+#           "**Religion (ref: Non-religious)**","1st Religion [Christian|Catholic]", "2nd Religion [Muslim|Evangelical]", "3rd Religion [Jewish]",
+#           "**Migration (ref: No-mig. back.)**","2nd generation [Turkish|Peruvian]", "1st generation [Syrian|Venezuelan]",
+#           "**Political pos. (ref: Center)**","Left-wing", "Right-wing", "Uninterested",
+#           "**Values (ref: Self-enhancement)**","Conservation", "Openness to change", "Self-transcendence")
+
+
 value_labels<- 
 c("**Income (ref: Low)**","Middle", "High", 
           "**Education (ref: Low)**","Middle Ed", "High Ed",
-          "**Religion (ref: Non-religious)**","1st Religion [Christian|Catholic]", "2nd Religion [Muslim|Evangelical]", "3rd Religion [Jewish]",
-          "**Migration (ref: No-mig. back.)**","2nd generation [Turkish|Peruvian]", "1st generation [Syrian|Venezuelan]",
+          "**Religion (ref: Non-religious)**","1st Religion [Christian]", "2nd Religion [Muslim]", "3rd Religion [Jewish]",
+          "**Migration (ref: No-mig. back.)**","2nd generation [Turkish]", "1st generation [Syrian]",
           "**Political pos. (ref: Center)**","Left-wing", "Right-wing", "Uninterested",
           "**Values (ref: Self-enhancement)**","Conservation", "Openness to change", "Self-transcendence")
 
@@ -223,10 +238,6 @@ coef_data_CL_DE$term <- factor(coef_data_CL_DE$term,
           labels = rev(value_labels)
           )
 
-# coef_data_CL_DE$term <- factor(coef_data_CL_DE$term,
-#                                levels = rev(value_labels),
-#           labels = rev(value_labels)
-#           )
 
 levels(coef_data_CL_DE$term)
 ```
@@ -236,7 +247,7 @@ library(ggthemes)
 library(ggtext)
 
 # Create the coefficient plot
-ggplot(coef_data_CL_DE, aes(x = estimate, y = term, color = country,group = country)) +
+ggplot(coef_data_CL_DE %>% filter(country=="Germany"), aes(x = estimate, y = term, color = country,group = country)) +
   geom_vline(xintercept = 0,color="red",size=1) +  
   geom_errorbarh(position = position_dodge(width = 0.2),aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "darkgray",size=1) +  # Confidence intervals
   geom_point(size = 3,position = position_dodge(width = 0.2)) +  # Points for coefficient estimates
@@ -274,7 +285,9 @@ theme_minimal(base_family = "Roboto Condensed", base_size = 12) +
     axis.text.y = element_markdown(hjust = 1,size = 13)
   )
 
-ggsave(plot = last_plot(),filename = "fig_coefplot_friendship_CL_DE.png",device = "png",path = "output/images/",width = 3,height = 2.,units = "cm",scale = 10)
+# ggsave(plot = last_plot(),filename = "fig_coefplot_friendship_CL_DE.png",device = "png",path = "output/images/",width = 3,height = 2.,units = "cm",scale = 10)
+
+ggsave(plot = last_plot(),filename = "fig_coefplot_friendship_DE_v2.png",device = "png",path = "output/images/",width = 3,height = 2.,units = "cm",scale = 10)
 ```
 
 
@@ -411,11 +424,19 @@ coef_data_DE$country <- "Germany"
 coef_data_CL$country <- "Chile"
 
 coef_data_CL_DE<-bind_rows(coef_data_CL,coef_data_DE)
+# value_labels<- 
+# c("**Income (ref: Low)**","Middle", "High", 
+#           "**Education (ref: Low)**","Middle Ed", "High Ed",
+#           "**Religion (ref: Non-religious)**","1st Religion [Christian|Catholic]", "2nd Religion [Muslim|Evangelical]", "3rd Religion [Jewish]",
+#           "**Migration (ref: No-mig. back.)**","2nd generation [Turkish|Peruvian]", "1st generation [Syrian|Venezuelan]",
+#           "**Political pos. (ref: Center)**","Left-wing", "Right-wing", "Uninterested",
+#           "**Values (ref: Self-enhancement)**","Conservation", "Openness to change", "Self-transcendence")
+
 value_labels<- 
 c("**Income (ref: Low)**","Middle", "High", 
           "**Education (ref: Low)**","Middle Ed", "High Ed",
-          "**Religion (ref: Non-religious)**","1st Religion [Christian|Catholic]", "2nd Religion [Muslim|Evangelical]", "3rd Religion [Jewish]",
-          "**Migration (ref: No-mig. back.)**","2nd generation [Turkish|Peruvian]", "1st generation [Syrian|Venezuelan]",
+          "**Religion (ref: Non-religious)**","1st Religion [Christian]", "2nd Religion [Muslim]", "3rd Religion [Jewish]",
+          "**Migration (ref: No-mig. back.)**","2nd generation [Turkish]", "1st generation [Syrian]",
           "**Political pos. (ref: Center)**","Left-wing", "Right-wing", "Uninterested",
           "**Values (ref: Self-enhancement)**","Conservation", "Openness to change", "Self-transcendence")
 
@@ -436,7 +457,7 @@ levels(coef_data_CL_DE$term)
 library(ggthemes)
 
 # Create the coefficient plot
-ggplot(coef_data_CL_DE, aes(x = estimate, y = term, color = country,group = country)) +
+ggplot(coef_data_CL_DE %>% filter(country=="Germany"), aes(x = estimate, y = term, color = country,group = country)) +
   geom_vline(xintercept = 0,color="red",size=1) +  
   geom_errorbarh(position = position_dodge(width = 0.2),aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "darkgray",size=1) +  # Confidence intervals
   geom_point(size = 3,position = position_dodge(width = 0.2)) +  # Points for coefficient estimates
@@ -473,7 +494,8 @@ theme_minimal(base_family = "Roboto Condensed", base_size = 12) +
     axis.text.y = element_markdown(hjust = 1,size = 13)
   )
 
-ggsave(plot = last_plot(),filename = "fig_coefplot_cooperation_CL_DE.png",device = "png",path = "output/images/",width = 3,height = 2.,units = "cm",scale = 10)
+# ggsave(plot = last_plot(),filename = "fig_coefplot_cooperation_CL_DE.png",device = "png",path = "output/images/",width = 3,height = 2.,units = "cm",scale = 10)
+ggsave(plot = last_plot(),filename = "fig_coefplot_cooperation_DE_v2.png",device = "png",path = "output/images/",width = 3,height = 2.,units = "cm",scale = 10)
 ```
 
 

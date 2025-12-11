@@ -1,0 +1,151 @@
+---
+bibliography: "bib/phd-tesis.bib" 
+---
+# Context {background-color="#491106ff"}
+
+## PhD dissertation
+
+### BIGSSS - GloWel - Global Inequality, the Middle Classes and the Welfare State" (DAAD)
+
+:::: {.columns}
+
+::: {.column width="20%"}
+
+![](images/glowel.jpg)
+
+:::
+::: {.column width="80%"}
+::: {.incremental .highlight-last style="font-size: 90%;"}
+
+- Study 1: **Iturra-Sanhueza, Julio**. 2025. "Class-Based Network Segregation, Economic Inequality, and Redistributive Preferences across Societies."" **_European Sociological Review_**, November 24, jcaf048. https://doi.org/10.1093/esr/jcaf048. 
+
+- Study 2: **Iturra-Sanhueza, Julio**. 2025. "More Diverse, More Skeptical? How Changes in Class-based Network Diversity Shape Public Support for Commodified Welfare Services: Longitudinal Evidence from Chile". **_Under review_**
+
+- [Study 3]{style="color: blue; font-weight: bold;"}: **Iturra-Sanhueza, Julio**, Castillo, Juan Carlos, Groh-Samberg, Olaf. "Ties that bond: Factorial Survey Experiment on Social Cohesion and Group Composition in Chile". **_Working paper_** (Collaboration COES, Chile and FGZ-RISC, Germany)
+  
+- More info: [https://github.com/phd-bigsss](https://github.com/phd-bigsss)
+
+:::
+:::
+::::
+
+## Theoretical perspectives on social cohesion
+
+### Social Cohesion 
+
+::: {.fragment fragment-index=1}
+* It can be understood as a state of affairs relating to interactions: **vertical** (between the state and its citizens and organizations) and **horizontal** (between individuals and groups in society).
+:::
+
+::: {.fragment fragment-index=2}
+> (..) characterized by a set of attitudes and norms that include trust, a sense of belonging, and a willingness to participate and help, as well as their behavioral manifestations [@chan_reconsidering_2006]. 
+:::
+
+::: {.fragment fragment-index=3}
+* Identifying shared and (i) **conflicting interests**, (ii) **goals**, and (iii) **values** leads to the identification of opportunities for cooperation motivated by bonds of trust and support within your local or national community.[@green_regimes_2011].
+:::
+
+## Theoretical perspectives on social cohesion
+
+### Cohesion between and within groups
+
+::: {.fragment fragment-index=1}
+Additionally, these attitudinal and behavioral expressions contribute to the formation of social groups :
+
+> (…) defined by a combination of socioeconomic position (vertical stratification) and shared cultural values (horizontal value space)  [@groh-samberg_social_2023]
+:::
+
+::: {.fragment fragment-index=2}
+
+From this perspective, individuals are integrated into social groups, and these are integrated (more or less) into society.  
+
+* **Internal cohesion**: similarity can promotes trust, consensus, and cooperation. 
+
+* **Intergroup cohesion**: existence of ties between groups and institutions that mediate and contain value or economic conflicts. 
+:::
+
+## Promoting and inhibiting forces of social cohesion
+
+### Socioeconomic domain
+
+::: {.incremental .highlight-last style="font-size: 100%;"}
+
+* Economic inequality can be "corrosive" to social cohesion [@delhey_social_2023]. As individuals are set apart by economic distance this breeds greater social distance, reduce chances of encounter and knowing others' world views [@otero_lives_2022]. 
+
+* Socioeconomic differences can draw symbolic boundaries of "respectability" and "distinction"[@groh-samberg_social_2023, p.315] associated with lower trust in others[@diprete_segregation_2011]. 
+
+* Advantaged positions are associated with lower perceived risks in exchange situations, which would explain a greater willingness to trust others [@fiske_facing_2012]. 
+  
+* As cooperation partners, people with high SES (education and income) are perceived as more competent, in contrast to individuals with lower SES [@salgado_expectations_2021]
+
+:::
+
+## Promoting and inhibiting forces of social cohesion
+
+### Sociocultural diversity domain
+
+::: {.incremental .highlight-last style="font-size: 100%;"}
+* Sociocultural **diversity** defined by differences in ethnic, religious, or national origin can tension social cohesion [@baldassarri_diversity_2020]. 
+ 
+* Migrants may be perceived as an economic **threat**, associated with increased perceived labor or cultural competition, linked to the loss of national identity [@castillo_social_2023]. However, positive **contact experiences** are also linked to lower prejudge towards migrants [@hewstone_consequences_2015]
+
+* Religiosisty can also be perceived as a symbol of adherence to social norms and values  [@rowatt_dimensions_2021]. Religious people may be perceived as slow planners, non-impulsive, and more trustworthy than non-religious people [@moon_religious_2018]. 
+
+:::
+
+## Promoting and inhibiting forces of social cohesion
+
+### Value domain
+
+::::: {.columns}
+:::: {.column width="40%"}
+
+::: {.fragment fragment-index=1 style="font-size: 80%;"}
+* Societies with greater degree of shared values show higher levels of social trust, suggesting that common goals are promoted by similarity in value orientation [@uslaner_inequality_2005].
+:::
+::: {.fragment fragment-index=2 style="font-size: 80%;"}
+* They function as evaluation criteria, so certain value profiles can promote or inhibit cohesion [@groh-samberg_social_2023].
+
+* Values transcend specific actions and situations. Distinguishing them from norms and attitudes that usually refer to specific actions, objects, or situations [@schwartz_universals_1992]
+
+:::
+::::
+
+
+:::: {.column width="60%"}
+::: {.fragment fragment-index=3 style="font-size: 50%;"}
+
+* According to the theory of basic human values [@schwartz_universals_1992], values can be divided into four conflicting higher-order values
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/humanvalues2.jpeg")
+```
+:::
+::::
+:::::
+
+## Promoting and inhibiting forces of social cohesion
+
+### Political Domain
+
+::: {.incremental .highlight-last style="font-size: 100%"}
+
+* Political positions affect social evaluations while political *identity* determines perceptions of trustworthiness and openness to reciprocity [@groh-samberg_social_2023]. 
+
+* Political division highlights evaluations based on **group membership**. For example, individuals evaluate positions on a **left-right** spectrum that traces the identities of political groups [@hernandez-lagos_political_2020].
+
+* Iin contrast to the borders of the spectrum, **centrists** are often seen as more moderate, open to compromise, and less extremist, making them more accessible to people from diverse political backgrounds [@hernandez-lagos_political_2020]
+
+:::
+
+# How do the characteristics of social groups affect social cohesion?{background-color="#491106ff"}
+
+## This Study
+
+::: {.r-stack}
+![](images/paper3_conerenciacoes_008.png){.fragment .fade-in fig-align="center" width="1000px}
+
+![](images/paper3_conerenciacoes_009.png){.fragment .fade-in fig-align="center" width="1200px}
+:::
+
+

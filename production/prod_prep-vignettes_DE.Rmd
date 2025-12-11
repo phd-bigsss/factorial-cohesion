@@ -337,6 +337,41 @@ df_vig_DE <- df_vig_DE %>% left_join(df_person_DE,by="pid")
 save(df_vig_DE,file = here::here("input/data/proc/df_vig_DE.Rdata"))
 ```
 
+
+```{r}
+library(ggplot2)
+
+summary(df_vig$friendship)
+summary(df_vig$cooperation)
+trust1 <- 
+ggplot(df_vig, aes(x = friendship)) +
+  geom_bar(aes(y = ..prop.., group = 1), fill = "grey60", color = "black", width = 0.9) +
+  scale_x_continuous(breaks = 0:10) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),limits = c(0,0.25)) +
+  labs(
+    title = "Trust: Germany",
+    x = "How likely is it that you would get along with person [ID]?",
+    y = "Proportion of responses"
+  ) +
+  theme_minimal(base_size = 14)
+
+coop1<- 
+ggplot(df_vig, aes(x = cooperation)) +
+  geom_bar(aes(y = ..prop.., group = 1), fill = "grey60", color = "black", width = 0.9) +
+  scale_x_continuous(breaks = 0:10) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),limits = c(0,0.25)) +
+  labs(
+    title = "Cooperation: Germany",
+    x = "How likely would you be to ask the person [ID] for help?",
+    y = "Proportion of responses"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+gridExtra::grid.arrange(trust1,coop1,nrow = 1)
+```
+
+
 # Models: Trust
 
 1)	Imagine you know person [ID] through your circle of acquaintances. How likely is it that you would get along with person [ID]? 
@@ -345,6 +380,8 @@ save(df_vig_DE,file = here::here("input/data/proc/df_vig_DE.Rdata"))
 library(estimatr)
 library(plm)
 library(lme4)
+library(texreg)
+library(dplyr)
 
 load(file = here::here("input/data/proc/df_vig_DE.Rdata"))
 df_vig<- df_vig_DE
@@ -388,7 +425,7 @@ df_vig$educat <- factor(df_vig$educat,levels = 1:8,labels = c("Primary","Lower s
                                                  "Post-secondary non-tertiary education",
                                                  "Short-cycle tertiary","Bachelor","Master","PhD"))
 
-frq(df_vig$educat)
+sjmisc::frq(df_vig$educat)
 
 df_vig$educat <- car::recode(df_vig$educat,"c('Bachelor','Master','PhD')='Universitary'")
 df_vig$educat <- factor(df_vig$educat,labels = c("Primary","Lower secondary","Upper secondary",
@@ -427,7 +464,7 @@ ggsave(plot = last_plot(),filename = "figure003.png",device = "png",
        path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 12)
 
 
-df_plot_poli$polcenter <- factor(df_plot_poli$polcenter,levels = c("Uninterested","Left-wing", "Center", "Right-wing"))
+df_plot_poli$polcenter <- factor(df_plot_poli$polcenter,levels = c("Left-wing", "Center", "Right-wing","Uninterested"))
 
 # names(df_pred1) 
 df_plot_poli %>%
@@ -481,6 +518,7 @@ coef_data$term <- factor(coef_data$term,
           "Values (ref: Self-enhancement)","Conservation", "Openness to change", "Self-transcendence")))
 
 library(ggthemes)
+library(ggplot2)
 # Create the coefficient plot
 ggplot(coef_data, aes(x = estimate, y = term)) +
   geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "darkgray",size=1) +  # Confidence intervals
@@ -558,7 +596,60 @@ lm_SES_rel_mig_pol_values <- plm(cooperation_z~vincome+vedu+norelig+vmigback+pol
 lm_SES_rel_mig_pol_values_controls <- plm(cooperation_z~vincome+vedu+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat,data = df_vig,index = "pid")
 
 models_cooperation<- list(lm_SES,lm_SES_rel,lm_SES_rel_mig,lm_SES_rel_mig_pol,lm_SES_rel_mig_pol_values,lm_SES_rel_mig_pol_values_controls)
+
 screenreg(models_cooperation,include.ci=F)
+
+
+lm_cooperation_mod0 <- lmer(cooperation_z~vincome+vedu+educat+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat +(vedu|pid),data = df_vig)
+
+lm_cooperation_mod1 <- lmer(cooperation_z~vincome+vedu*educat+norelig+vmigback+polcenter+selftrans+vgender+vage+vempstat +(vedu|pid),data = df_vig)
+
+lm_cooperation_mod2 <- lmer(cooperation_z~vincome+vedu+norelig+vmigback+polcenter*ideology_collapsed+selftrans+vgender+vage+vempstat +(vedu|pid),data = df_vig)
+
+screenreg(list(lm_cooperation_mod0,lm_cooperation_mod1,lm_cooperation_mod2))
+
+df_plot_educ <- plot_predictions(lm_cooperation_mod1, condition = c("vedu", "educat"),draw = F)
+df_plot_poli <- plot_predictions(lm_cooperation_mod2, condition = c("polcenter", "ideology_collapsed"),draw = F)
+
+
+# names(df_pred1) 
+df_plot_educ %>%
+  filter(educat %in% c("Primary","Universitary")) %>%
+ggplot(aes(y =estimate,x=vedu, fill=educat, group=educat,color=educat,ymin=conf.low, ymax=conf.high)) +
+  geom_errorbar(width=0.02,linetype="solid") +
+  geom_line(size=1) +
+  geom_point(size=2) +
+  scale_color_manual(values=c("#323232","#989898","#CCCCCC","red"))+
+  scale_y_continuous(limits = c(-1,1))+
+  labs(caption = paste0("Note: N (observations) = ",nobs(lm_friendship_mod1),"; N (individuals) = ",lme4::ngrps(lm_friendship_mod1),". Predictive estimates with 95% confidence intervals"),
+       x="Education (Vignette)",y="Cooperation (z-score)",
+       color="Education\n(Respondent)",
+       fill="Education\n(Respondent)") +
+  theme(legend.position = "right")
+
+ggsave(plot = last_plot(),filename = "figure003.1.png",device = "png",
+       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 12)
+
+
+df_plot_poli$polcenter <- factor(df_plot_poli$polcenter,levels = c("Left-wing","Center","Right-wing","Uninterested"))
+
+# names(df_pred1) 
+df_plot_poli %>%
+ggplot(aes(y =estimate,x=polcenter, fill=ideology_collapsed, group=ideology_collapsed,color=ideology_collapsed,ymin=conf.low, ymax=conf.high)) +
+  geom_errorbar(width=0.1,linetype="solid",position=position_dodge(width=0.4)) +
+  # geom_line(size=1) +
+  geom_point(size=2,position=position_dodge(width=0.4)) +
+  scale_color_manual(values=c("red","purple","blue"))+
+  scale_y_continuous(limits = c(-1,1.2))+
+  labs(caption = paste0("Note: N (observations) = ",nobs(lm_friendship_mod1),"; N (individuals) = ",lme4::ngrps(lm_friendship_mod1),". Predictive estimates with 95% confidence intervals"),
+       x="Political (Vignette)",y="Cooperation (z-score)",
+       color="Political\n(Respondent)",
+       fill="Political\n(Respondent)") +
+  theme(legend.position = "right")
+
+
+ggsave(plot = last_plot(),filename = "figure004.1.png",device = "png",
+       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 12)
 
 # Extract coefficients and confidence intervals using broom
 coef_data <- broom::tidy(models_cooperation[[6]], conf.int = TRUE)
