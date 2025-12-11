@@ -8,12 +8,12 @@ bibliography: "bib/phd-tesis.bib"
 
 * **Research design:** A vignette factorial study is used to explore how specific characteristics of fictional subjects (vignettes) influence the assessments of external observers.
   
-* Vignette design:
+* **Vignette design:**
   * Each vignette includes attributes such as demographic or socioeconomic characteristics (e.g., gender, income).
     
-* Respondents evaluate these vignettes based on the attributes provided (*details on next slide*).
+* Respondents evaluate these vignettes based on the attributes provided (***details on next slide***).
   
-* Administration: To ensure manageable data collection, each respondent evaluates a limited number of vignettes. 
+* **Administration:** To ensure manageable data collection, each respondent evaluates a **limited** number of vignettes. 
 
 ## Vignettes dimensions
 
@@ -123,7 +123,7 @@ _Person [ID] is [**male**] and [**45 years old**]. He was [**born in Venezuela, 
 
 ### Outcomes
 
-1) Imagine you meet a person [ID] through your circle of acquaintances. How likely is it that you will get along with the person [ID]?  (**Trust**)
+1) Imagine you meet a person [ID] through your circle of acquaintances. How likely is it that you will get along with the person [ID]?  [(**Trust**)]{.mark} 
 2) Imagine you are faced with a task that you cannot do on your own. How likely are you to ask [ID] for help? (**Cooperation**)
 3) Imagine that person [ID] moves into your neighborhood. What is the probability that you will come into conflict with that person? (**Conflict**)
 
@@ -151,11 +151,11 @@ _Person [ID] is [**male**] and [**45 years old**]. He was [**born in Venezuela, 
 
 The model is a two-level hierarchical linear model:
 
-* Level 1 (within respondents): Observations are individual vignettes rated by respondents. Predictors at this level are vignette characteristics (e.g., vignette income).
+* **Level 1 (within respondents):** Observations are individual vignettes rated by respondents. Predictors at this level are vignette characteristics (e.g., vignette income).
 
-* Level 2 (between respondents): Respondents are the higher-level units. Predictors at this level are respondent characteristics (e.g., respondent income, age, gender).
+* **Level 2 (between respondents):** Respondents are the higher-level units. Predictors at this level are respondent characteristics (e.g., respondent income, age, gender).
 
-* Cross-level interaction: The effect of a vignette-level predictor (e.g., vignette income) is allowed to vary depending on a respondent-level predictor (e.g., respondent income). This is modeled by including an interaction term.
+* **Cross-level interaction:** The effect of a vignette-level predictor (e.g., vignette income) is allowed to vary depending on a respondent-level predictor (e.g., respondent income). This is modeled by including an interaction term.
 
 ::: {.fragment}
 $$
