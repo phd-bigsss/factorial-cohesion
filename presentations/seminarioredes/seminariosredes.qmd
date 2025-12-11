@@ -82,7 +82,7 @@ rm(list = ls())
 
 ------------------------------------------------------------------------
 
-**Julio Iturra-Sanhueza^1,2^**
+**Julio Iturra-Sanhueza^1,2^ (coauthorship: Juan Carlos Castillo & Olaf Groh-Samberg**)
 
 ::: {.blue2 .medium style="line-height:0.4; margin-top:0; margin-bottom:0;"}
 
