@@ -76,7 +76,7 @@ rm(list = ls())
 
 ::: {.column .column-right width="80%"}
 
-# Ties that bond: Factorial Survey Experiment on Social Cohesion and Group Composition in Chile.  {style="font-size:20px; text-align:right; line-height:1.1;"}
+# Ties that bond: A Factorial Survey Experiment on Social Cohesion and Group Composition in Chile.  {style="font-size:20px; text-align:right; line-height:1.1;"}
 
 <!-- ### **Asociaciones con estratificación social y creencias en la meritocracia**{style="font-size:35px; text-align:right; line-height:1.1; margin-top:10px;"} -->
 
@@ -97,6 +97,18 @@ Supervisors: </br>Dr. Patrick Sachweh (U. Bremen)</br>Dr. Olaf Groh-Samberg (U. 
 
 :::
 :::
+
+##  
+
+<br><br><br>
+
+> *Sin la confianza general que las personas tienen entre sí, la sociedad misma se desintegraría, ya que muy pocas relaciones se basan enteramente en lo que se sabe con certeza sobre otra persona, y muy pocas relaciones perdurarían si la confianza no fuera tan fuerte como, o más fuerte que, la prueba racional o la observación personal.* (Traducción propia)
+
+::: {style="text-align: right"}
+Simmel, G. (2011, [1900]). *The philosophy of money*. 
+:::
+
+
 
 {{< include 01-introduccion.qmd >}}
 

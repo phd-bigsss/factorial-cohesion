@@ -101,7 +101,7 @@ From this perspective, individuals are integrated into social groups, and these 
 :::: {.column width="40%"}
 
 ::: {.fragment fragment-index=1 style="font-size: 80%;"}
-* Societies with greater degree of shared values show higher levels of social trust, suggesting that common goals are promoted by similarity in value orientation [@uslaner_inequality_2005].
+* Societies with greater degree of shared values show higher levels of social trust, suggesting that common goals are promoted by similarity in human value orientation [@beilmann_social_2015].
 :::
 ::: {.fragment fragment-index=2 style="font-size: 80%;"}
 * They function as evaluation criteria, so certain value profiles can promote or inhibit cohesion [@groh-samberg_social_2023].
@@ -134,7 +134,7 @@ knitr::include_graphics("images/humanvalues2.jpeg")
 
 * Political division highlights evaluations based on **group membership**. For example, individuals evaluate positions on a **left-right** spectrum that traces the identities of political groups [@hernandez-lagos_political_2020].
 
-* Iin contrast to the borders of the spectrum, **centrists** are often seen as more moderate, open to compromise, and less extremist, making them more accessible to people from diverse political backgrounds [@hernandez-lagos_political_2020]
+* In contrast to the borders of the political spectrum, **centrists** are often seen as more moderate, open to compromise, and less extremist, making them more accessible to people from diverse political backgrounds [@hernandez-lagos_political_2020]
 
 :::
 
