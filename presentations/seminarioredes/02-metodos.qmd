@@ -174,7 +174,7 @@ $$
  Imagine you meet a person [ID] through your circle of acquaintances. How likely is it that you will get along with the person [ID]?  (**Trust**)
 
 ```{r , echo=FALSE, out.width="50%", fig.align="center"}
-knitr::include_graphics("images/histrogram_trust.PNG")
+knitr::include_graphics("images/histrogram_trust.png")
 ```
 
 
