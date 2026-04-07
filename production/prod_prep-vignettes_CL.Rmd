@@ -51,11 +51,43 @@ pacman::p_load(dplyr,       # Manipulacion de datos
                )
 
 # df_inicio <- read.csv(here::here("input/data/original/survey-edumer/01_inicio.csv"))
+
+# dim(df_vig)
 df_vig <- read.csv(here::here("input/data/original/survey-edumer/02_vignettes.csv"))
 load(file = here::here("input/data/original/survey-edumer/iniciadas-280125.RData"))
+load(file = here::here("input/data/original/survey-edumer/study3_rawdata.RData"))
+
 df_inicio <-iniciadas
+# df_inicio <-etapa2
+dim(df_inicio)
 ```
 # Respondent data
+
+```{r surveytime}
+library(dplyr)
+library(lubridate)
+
+# Define la zona horaria si corresponde (Santiago)
+tz_chile <- "America/Santiago"
+
+etapa2 %>% select(session,start_2,ended_2,modified_2,expired_2) %>% skimr::skim()
+
+times <- etapa2 %>%
+  mutate(
+    # Convertir a POSIXct si son character
+    created_dt = ymd_hms(start_2, tz = tz_chile),
+    ended_dt   = ymd_hms(modified_2,   tz = tz_chile),
+
+    # Diferencia en segundos
+    timesec = as.numeric(difftime(ended_dt, created_dt, units = "secs")),
+    # Diferencia en minutos
+    timemin = as.numeric(difftime(ended_dt, created_dt, units = "mins"))    
+  ) %>% select(session,timesec,timemin)
+
+summary(times$timemin)
+
+df_inicio <- left_join(x = df_inicio,y= times %>% select(session,timemin,timesec),by="session")
+```
 
 ```{r sex}
 df_inicio$female<- car::recode(df_inicio$screen_sex,"1=0;2=1;c(3,4)=NA")
@@ -630,7 +662,7 @@ df_for_fa<- df_inicio %>% select(starts_with("cohesion_"))
 
 plot_stackfrq(df_for_fa)
 
-psych::fa(df_for_fa,nfactors = 1)
+psych::fa(df_for_fa,nfactors = 2)
 
 model_cohesion<- 
 'cohesion=~cohesion_01+cohesion_02+cohesion_03+cohesion_04+cohesion_05+cohesion_06+
@@ -638,18 +670,20 @@ model_cohesion<-
 
 fit_cohesion <- cfa(model = model_cohesion,data = df_for_fa,ordered = cohesion_vars)
 summary(fit_cohesion,standardize=T,fit.measures = TRUE)
+
 ```
 
 ```{r}
 df_individuals <- df_inicio
 
-df_individuals<- df_individuals%>% select(pid=session,educat,isced,ideology_collapsed,income_ter,income_cua,income_qui,income_eq,
-                                 migration,religion,mrat,
+df_individuals<- df_individuals%>% select(pid=session,timemin,timesec,educat,isced,ideology_collapsed,income_ter,income_cua,income_qui,income_eq,
+                                 migration,religion,mrat,timemin,timesec,
                                  self_transcendenceR, self_enhancementR, openness_changeR, conservationR,
                                  self_transcendence, self_enhancement, openness_change, conservation,
                                  starts_with("swval"))
 
 view_df(df_individuals)
+dim(df_individuals)
 save(df_individuals,file = here::here("input/data/proc/df_individuals.Rdata"))
 ```
 
@@ -874,8 +908,8 @@ df_vig_long_combined$vedu <- factor(df_vig_long_combined$vedu,levels = 1:3,label
 
 ```{r}
 frq(df_vig_long_combined$vrelig)
-df_vig_long_combined$norelig <- factor(df_vig_long_combined$vrelig,levels = 1:4,c("Catholic","Evangelical","Jewish","No confession"))
-df_vig_long_combined$norelig <- relevel(factor(df_vig_long_combined$norelig),ref = "No confession")
+df_vig_long_combined$norelig <- factor(df_vig_long_combined$vrelig,levels = 1:4,c("Catholic","Evangelical","Jewish","Non-religious"))
+df_vig_long_combined$norelig <- relevel(factor(df_vig_long_combined$norelig),ref = "Non-religious")
 frq(df_vig_long_combined$norelig)
 # model_religion<- lm(friendship~factor(norelig),data = df_vig)
 # plot_model(model_religion,type = "est",show.values = T)
@@ -1019,7 +1053,7 @@ df_vig_long_combined$vempstat <- factor(df_vig_long_combined$vempstat,c(1,2,3),c
 df_vig<- df_vig_long_combined # Vignete data
 
 df_vig<- df_vig %>% 
-  left_join(df_inicio %>% select(pid=session,female,age_group,educat,isced,ideology_collapsed,income_ter,income_cua,income_qui,income_eq,
+  left_join(df_inicio %>% select(pid=session,timemin,timesec,female,age_group,educat,isced,ideology_collapsed,income_ter,income_cua,income_qui,income_eq,
                                  migration,religion,
                                  self_transcendence, self_enhancement, openness_change, conservation,
                                  starts_with("swval")),

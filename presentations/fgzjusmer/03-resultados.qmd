@@ -1,0 +1,25 @@
+# Results {background-color="#491106ff"}
+
+## Social positions and social cohesion
+
+```{r , echo=FALSE, out.width="75%"}
+knitr::include_graphics("images/fig_coefplot_friendship_CL.png")
+```
+
+## Cross-group interactions (SES)
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/figure_slides01_CL.png")
+```
+
+## Cross-group interactions (SC)
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/figure_slides02_CL.png")
+```
+
+## Cross-group interactions (Pol-Val)
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/figure_slides03_CL.png")
+```
+
