@@ -50,7 +50,7 @@ pacman::p_load(dplyr,       # Manipulacion de datos
                tidyr
                )
 
-# df_inicio <- read.csv(here::here("input/data/original/survey-edumer/01_inicio.csv"))
+df_inicio <- read.csv(here::here("input/data/original/survey-edumer/01_inicio.csv"))
 
 # dim(df_vig)
 df_vig <- read.csv(here::here("input/data/original/survey-edumer/02_vignettes.csv"))

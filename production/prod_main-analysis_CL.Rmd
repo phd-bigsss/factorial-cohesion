@@ -122,13 +122,17 @@ frq(df_vig$religions)
 
 df_vig$neighborhoodr<- sjmisc::rec(df_vig$neighborhood,rec = "rev")  
 
-df_vig<- df_vig %>% sjmisc::row_means("friendship","cooperation","neighborhoodr",n = 3,var = "cohesion",append = T)
-  
-df_vig <- df_vig %>% group_by(pid) %>% mutate(n_obs=n())
+respondentsN <- unique(df_vig$pid);length(respondentsN)
 
+drop_analysis <- df_vig
+
+df_vig <- df_vig %>% group_by(pid) %>% mutate(n_obs=n()) %>% 
+  select(pid,deck,deck_vig,friendship,friendship_z,vincome,vedu,norelig,vmigback,polcenter,selftrans,vgender,vage,vempstat,
+                  income_qui,educat,migration,religions,ideology_collapsed,humanvalue,female,age_group,n_obs,timemin,timesec,deck) %>% na.omit()
+respondentsN2 <- unique(df_vig$pid);length(respondentsN2)
 df_vig2 <- 
-df_vig %>% select(pid,deck,friendship_z,cooperation,neighborhood,vincome,vedu,norelig,vmigback,polcenter,selftrans,vgender,vage,vempstat,
-                  income_qui,educat,migration,religions,ideology_collapsed,humanvalue,female,age_group,cohesion,n_obs,timemin,timesec) %>% na.omit()
+df_vig %>% select(pid,deck,friendship_z,vincome,vedu,norelig,vmigback,polcenter,selftrans,vgender,vage,vempstat,
+                  income_qui,educat,migration,religions,ideology_collapsed,humanvalue,female,age_group,n_obs,timemin,timesec) %>% na.omit()
 
 df_vig2 <- df_vig2 %>% group_by(pid) %>% mutate(n_obs_lw=n())
 
@@ -137,7 +141,31 @@ df_vig2 <- df_vig2 %>% filter(n_obs_lw>=6)
 summary(df_vig$timemin)
 summary(df_vig$timesec)
 
+# Create the missingness indicator in the full sample
+drop_analysis <- drop_analysis |>
+  mutate(dropped = ifelse(pid %in% df_vig$pid, 0, 1)) %>% 
+  select(pid,income_qui,educat,migration,religions,ideology_collapsed,female,age_group,dropped) %>%  
+  group_by(pid) |>
+  slice(1) |>
+  ungroup()
+
+table(drop_analysis$dropped)
+summary(drop_analysis)
+
+# Logistic regression of dropping on respondent characteristics
+model_missing <- glm(
+  dropped ~ factor(income_qui) + educat + migration + religions +  female + age_group,
+  data   = drop_analysis,
+  family = binomial(link = "logit")
+)
+summary(model_missing)
+library(performance)
+r2_mcfadden(model_missing)
+
 # Main effects-----------------------------------------------------------------
+
+lm_fship_vig_null   <- lmer(friendship_z~(1|pid),data = df_vig)
+
 lm_fship_vig_resp   <- lmer(friendship_z~
                             vincome+vedu+
                               norelig+vmigback+
@@ -146,7 +174,11 @@ lm_fship_vig_resp   <- lmer(friendship_z~
                               factor(income_qui)+educat+
                               migration+religions+
                               ideology_collapsed+humanvalue+female+age_group+
+                              # factor(deck)+scale(timemin)+
                               (1|pid),data = df_vig)
+
+# Including time does not affect the results
+# Including deck does not affect the results
 
 lm_fship_vig_resp_t   <- lmer(friendship_z~
                             vincome+vedu+
@@ -178,54 +210,55 @@ lm_fship_vig_resp2_t   <- lmer(friendship_z~
                               migration+religions+
                               ideology_collapsed+humanvalue+female+age_group+scale(timemin)+
                               (1|pid),data = df_vig2)
-screenreg(list(lm_fship_vig_resp,lm_fship_vig_resp_t))
 
-lm_coop_vig_resp   <- lmer(cooperation~
-                            vincome+vedu+
-                              norelig+vmigback+
-                              polcenter+selftrans+
-                              vgender+vage+vempstat+
-                              factor(income_qui)+educat+
-                              migration+religions+
-                              ideology_collapsed+humanvalue+female+age_group+
-                              (1|pid),data = df_vig)
+screenreg(list(lm_fship_vig_resp,lm_fship_vig_resp_t,lm_fship_vig_resp2,lm_fship_vig_resp2_t),digits = 3)
 
-
-lm_neigh_vig_resp   <- lmer(neighborhoodr~
-                            vincome+vedu+
-                              norelig+vmigback+
-                              polcenter+selftrans+
-                              vgender+vage+vempstat+
-                              factor(income_qui)+educat+
-                              migration+religions+
-                              ideology_collapsed+humanvalue+female+age_group+
-                              (1|pid),data = df_vig)
-
-lm_coes_vig_resp   <- lmer(cohesion~
-                            vincome+vedu+
-                              norelig+vmigback+
-                              polcenter+selftrans+
-                              vgender+vage+vempstat+
-                              factor(income_qui)+educat+
-                              migration+religions+
-                              ideology_collapsed+humanvalue+female+age_group+
-                              (1|pid),data = df_vig)
-
-lm_coes_vig_resp2   <- lmer(cohesion~
-                            vincome+vedu+
-                              norelig+vmigback+
-                              polcenter+selftrans+
-                              vgender+vage+vempstat+
-                              factor(income_qui)+educat+
-                              migration+religions+
-                              ideology_collapsed+humanvalue+female+age_group+
-                              (1|pid),data = df_vig2)
-
-screenreg(list(lm_coes_vig_resp,lm_coes_vig_resp2))
+# lm_coop_vig_resp   <- lmer(cooperation~
+#                             vincome+vedu+
+#                               norelig+vmigback+
+#                               polcenter+selftrans+
+#                               vgender+vage+vempstat+
+#                               factor(income_qui)+educat+
+#                               migration+religions+
+#                               ideology_collapsed+humanvalue+female+age_group+
+#                               (1|pid),data = df_vig)
+# 
+# 
+# lm_neigh_vig_resp   <- lmer(neighborhoodr~
+#                             vincome+vedu+
+#                               norelig+vmigback+
+#                               polcenter+selftrans+
+#                               vgender+vage+vempstat+
+#                               factor(income_qui)+educat+
+#                               migration+religions+
+#                               ideology_collapsed+humanvalue+female+age_group+
+#                               (1|pid),data = df_vig)
+# 
+# lm_coes_vig_resp   <- lmer(cohesion~
+#                             vincome+vedu+
+#                               norelig+vmigback+
+#                               polcenter+selftrans+
+#                               vgender+vage+vempstat+
+#                               factor(income_qui)+educat+
+#                               migration+religions+
+#                               ideology_collapsed+humanvalue+female+age_group+
+#                               (1|pid),data = df_vig)
+# 
+# lm_coes_vig_resp2   <- lmer(cohesion~
+#                             vincome+vedu+
+#                               norelig+vmigback+
+#                               polcenter+selftrans+
+#                               vgender+vage+vempstat+
+#                               factor(income_qui)+educat+
+#                               migration+religions+
+#                               ideology_collapsed+humanvalue+female+age_group+
+#                               (1|pid),data = df_vig2)
+# 
+# screenreg(list(lm_coes_vig_resp,lm_coes_vig_resp2))
 
 library(performance)
-r2(lm_fship_vig_resp,verbose = T)
-r2(lm_fship_vig_resp2,verbose = T)
+# r2(lm_fship_vig_resp,verbose = T)
+# r2(lm_fship_vig_resp2,verbose = T)
 
 # avgcomp_fship_inco <- marginaleffects::avg_comparisons(lm_fship_vig_resp, variables = list(vincome="sequential"))
 # avgcomp_fship_educ <- marginaleffects::avg_comparisons(lm_fship_vig_resp, variables = list(vedu="sequential"))
@@ -233,9 +266,7 @@ r2(lm_fship_vig_resp2,verbose = T)
 
 # Conditional R² tells you how well the entire model explains variation, including within-group differences.
 # Marginal R² tells you how well your predictors explain variation between units.
-screenreg(list(lm_fship_vig_resp,lm_coop_vig_resp,lm_neigh_vig_resp,lm_coes_vig_resp))
-
-df_plot_income$income_qui <- as.factor(as.numeric(df_plot_income$income_qui))
+# screenreg(list(lm_fship_vig_resp,lm_coop_vig_resp,lm_neigh_vig_resp,lm_coes_vig_resp))
 
 # Cross-level interaction------------------------------------------------------
 
@@ -250,6 +281,650 @@ interactions_trust<- list(cl_trust_inco,cl_trust_educ,cl_trust_migr,cl_trust_rel
 
 screenreg(interactions_trust,digits = 3)
 ```
+
+```{r tableS01}
+htmlreg(
+  lm_fship_vig_resp,
+  single.row = T,
+  digits = 3,
+  file = here::here("output/tables/table0002.html"),
+  caption = "Table : Multilevel Model of Getting along based on vignette and respondent characteristics",
+  caption.above = TRUE,
+  custom.coef.map = list(
+    # Vignette level — plain (primary)
+    "vincomeMiddle"                         = "$910.000",
+    "vincomeHigh"                           = "$4.000.000",
+    "veduMiddle"                            = "High school",
+    "veduHigh"                              = "Universitary",
+    "noreligCatholic"                       = "Catholic",
+    "noreligEvangelical"                    = "Evangelical",
+    "noreligJewish"                         = "Jewish",
+    "vmigback2nd generation (Peruvian)"     = "Peruvian",
+    "vmigback1. Generation (Venezuelan)"    = "Venezuelan",
+    "polcenterLeft-wing"                    = "Left-wing",
+    "polcenterRight-wing"                   = "Right-wing",
+    "polcenterUninterested"                 = "Uninterested",
+    "selftransConservation"                 = "Conservation",
+    "selftransOpeness to change"            = "Openness to Change",
+    "selftransSelf-transcendence"           = "Self-transcendence",
+    "vgenderFemale"                         = "Female",
+    "vage45 years"                          = "45 years",
+    "vage65 years"                          = "65 years",
+    "vempstatUnemployed"                    = "Unemployed",
+    "vempstatHomemaker"                     = "Homemaker",
+    # Respondent level — dashed prefix (secondary)
+    "factor(income_qui)2"                   = "— Income Quintile 2",
+    "factor(income_qui)3"                   = "— Income Quintile 3",
+    "factor(income_qui)4"                   = "— Income Quintile 4",
+    "factor(income_qui)5"                   = "— Income Quintile 5",
+    "educatSecondary"                       = "— Secondary",
+    "educatTechnical"                       = "— Technical",
+    "educatUniversitary"                    = "— University",
+    "migrationVenezuela"                    = "— Venezuela",
+    "migrationPeru"                         = "— Peru",
+    "migrationBolivia"                      = "— Bolivia",
+    "migrationOthers"                       = "— Others",
+    "religionsBeliever without affiliation" = "— Believer w/o Affiliation",
+    "religionsCatholic"                     = "— Catholic",
+    "religionsEvangelical"                  = "— Evangelical",
+    "religionsJewish"                       = "— Jewish",
+    "religionsPrefer not to answer"         = "— Prefer not to answer",
+    "ideology_collapsedCenter"              = "— Center",
+    "ideology_collapsedRight"               = "— Right",
+    "ideology_collapsedNon-Partisan"        = "— Non-Partisan",
+    "humanvalueopenness_change"             = "— Openness to Change",
+    "humanvalueconservation"                = "— Conservation",
+    "humanvalueself_transcendence"          = "— Self-transcendence",
+    "female"                                = "— Female",
+    "age_group25-34"                        = "— 25–34",
+    "age_group35-44"                        = "— 35–44",
+    "age_group45-54"                        = "— 45–54",
+    "age_group55-64"                        = "— 55–64",
+    "age_group65-74"                        = "— 65–74",
+    "age_group75-84"                        = "— 75–84",
+    "age_group85+"                          = "— 85+",
+    "(Intercept)"                           = "Intercept"
+  ),
+  groups = list(
+    "Income (ref.=$500.000)"                  = 1:2,
+    "Education (ref.=Primary)"                = 3:4,
+    "Religion (ref.=No religious)"            = 5:7,
+    "Migration (ref.=Chilean)"                = 8:9,
+    "Politics (ref.=Center)"                  = 10:12,
+    "Human Values (ref.=Self-enhancement)"    = 13:15,
+    "Gender (ref.=Male)"                      = 16:16,
+    "Age (ref.=25 years)"                     = 17:18,
+    "Employment (ref.=Employed)"              = 19:20,
+    "Rs: Income (ref.=Quintile 1)"            = 21:24,
+    "Rs: Education (ref.=Primary)"            = 25:27,
+    "Rs: Migration (ref.=Chilean)"            = 28:31,
+    "Rs: Religion (ref.=Atheist/Agnostic)"    = 32:36,
+    "Rs: Ideology (ref.=Left)"                = 37:39,
+    "Rs: Human Values (ref.=Self-enhancement)"= 40:42,
+    "Rs: Gender (ref.=Male)"                  = 43:43,
+    "Rs: Age Group (ref.=18–24)"              = 44:50
+  ),
+  include.aic    = FALSE,
+  include.loglik = FALSE,
+  custom.gof.names = c(
+    "BIC",
+    "Num. Vignettes",
+    "Num. Respondents",
+    "Var: Respondent (Intercept)",
+    "Var: Vignettes"
+  ),
+  custom.note = "Note: Coefficients are presented with standard errors in parentheses.<br>
+  Coefficients are standardized <br>
+  Rs = Respondent. %stars"
+)
+```
+
+```{r}
+interactions <- list(cl_trust_inco,cl_trust_educ,cl_trust_migr,cl_trust_reli,cl_trust_vals,cl_trust_poli)
+
+htmlreg(
+  interactions[1:2],
+  single.row = T,
+  digits = 3,
+  file = here::here("output/tables/tableS002a.html"),
+  caption = "Table S2a: Multilevel regression models with cross-level interactions vignette income and education",
+  caption.above = TRUE,
+  custom.model.names = c(
+    "M1: Income",
+    "M2: Education"
+  ),
+  custom.coef.map = list(
+    # Intercept
+    "(Intercept)"                            = "Intercept",
+    # Vignette Income
+    "vincomeMiddle"                          = "$910.000",
+    "vincomeHigh"                            = "$4.000.000",
+    # Vignette Education
+    "veduMiddle"                             = "High school",
+    "veduHigh"                               = "Universitary",
+    # Respondent Income
+    "factor(income_qui)2"                    = "— Quintile 2",
+    "factor(income_qui)3"                    = "— Quintile 3",
+    "factor(income_qui)4"                    = "— Quintile 4",
+    "factor(income_qui)5"                    = "— Quintile 5",
+    # Respondent Education
+    "educatSecondary"                        = "— Secondary",
+    "educatTechnical"                        = "— Technical",
+    "educatUniversitary"                     = "— University",
+    # Interactions: Vignette Income × Rs. Income (M1)
+    "vincomeMiddle:factor(income_qui)2"      = "$910.000 × Quintile 2",
+    "vincomeHigh:factor(income_qui)2"        = "$4.000.000 × Quintile 2",
+    "vincomeMiddle:factor(income_qui)3"      = "$910.000 × Quintile 3",
+    "vincomeHigh:factor(income_qui)3"        = "$4.000.000 × Quintile 3",
+    "vincomeMiddle:factor(income_qui)4"      = "$910.000 × Quintile 4",
+    "vincomeHigh:factor(income_qui)4"        = "$4.000.000 × Quintile 4",
+    "vincomeMiddle:factor(income_qui)5"      = "$910.000 × Quintile 5",
+    "vincomeHigh:factor(income_qui)5"        = "$4.000.000 × Quintile 5",
+    # Interactions: Vignette Education × Rs. Education (M2)
+    "veduMiddle:educatSecondary"             = "High school × Secondary",
+    "veduHigh:educatSecondary"               = "Universitary × Secondary",
+    "veduMiddle:educatTechnical"             = "High school × Technical",
+    "veduHigh:educatTechnical"               = "Universitary × Technical",
+    "veduMiddle:educatUniversitary"          = "High school × University",
+    "veduHigh:educatUniversitary"            = "Universitary × University"
+  ),
+  groups = list(
+    "Vig. Income (ref.=$500.000)"                           = 2:3,
+    "Vig. Education (ref.=Primary)"                         = 4:5,
+    "Rs: Income (ref.=Quintile 1)"                          = 6:9,
+    "Rs: Education (ref.=Primary)"                          = 10:12,
+    "Vig. Income × Rs. Income (ref.=Quintile 1)"            = 13:20,
+    "Vig. Education × Rs. Education (ref.=Primary)"         = 21:26
+  ),
+  custom.gof.rows = list(
+    "Resp. characteristics" = c("Yes", "Yes")
+  )
+)
+```
+
+```{r}
+htmlreg(
+  interactions[3:4],
+  single.row = T,
+  digits = 3,
+  file = here::here("output/tables/tableS002b.html"),
+  caption = "Table S2b: Multilevel regression models with cross-level interactions vignette migration and religion",
+  caption.above = TRUE,
+  custom.model.names = c(
+    "M3: Migration",
+    "M4: Religion"
+  ),
+  custom.coef.map = list(
+    # Vignette Migration
+    "vmigback2nd generation (Peruvian)"                       = "Peruvian",
+    "vmigback1. Generation (Venezuelan)"                      = "Venezuelan",
+    # Vignette Religion
+    "noreligCatholic"                                         = "Catholic",
+    "noreligEvangelical"                                      = "Evangelical",
+    "noreligJewish"                                           = "Jewish",
+    # Interactions: Vignette Migration × Rs. Migration (M3)
+    "vmigback2nd generation (Peruvian):migrationVenezuela"    = "Peruvian × Venezuela",
+    "vmigback1. Generation (Venezuelan):migrationVenezuela"   = "Venezuelan × Venezuela",
+    "vmigback2nd generation (Peruvian):migrationPeru"         = "Peruvian × Peru",
+    "vmigback1. Generation (Venezuelan):migrationPeru"        = "Venezuelan × Peru",
+    "vmigback2nd generation (Peruvian):migrationBolivia"      = "Peruvian × Bolivia",
+    "vmigback1. Generation (Venezuelan):migrationBolivia"     = "Venezuelan × Bolivia",
+    "vmigback2nd generation (Peruvian):migrationOthers"       = "Peruvian × Others",
+    "vmigback1. Generation (Venezuelan):migrationOthers"      = "Venezuelan × Others",
+    # Interactions: Vignette Religion × Rs. Religion (M4)
+    "noreligCatholic:religionsBeliever without affiliation"   = "Catholic × Believer w/o Affiliation",
+    "noreligEvangelical:religionsBeliever without affiliation"= "Evangelical × Believer w/o Affiliation",
+    "noreligJewish:religionsBeliever without affiliation"     = "Jewish × Believer w/o Affiliation",
+    "noreligCatholic:religionsCatholic"                       = "Catholic × Catholic",
+    "noreligEvangelical:religionsCatholic"                    = "Evangelical × Catholic",
+    "noreligJewish:religionsCatholic"                         = "Jewish × Catholic",
+    "noreligCatholic:religionsEvangelical"                    = "Catholic × Evangelical",
+    "noreligEvangelical:religionsEvangelical"                 = "Evangelical × Evangelical",
+    "noreligJewish:religionsEvangelical"                      = "Jewish × Evangelical",
+    "noreligCatholic:religionsJewish"                         = "Catholic × Jewish",
+    "noreligEvangelical:religionsJewish"                      = "Evangelical × Jewish",
+    "noreligJewish:religionsJewish"                           = "Jewish × Jewish",
+    "noreligCatholic:religionsPrefer not to answer"           = "Catholic × Prefer not to answer",
+    "noreligEvangelical:religionsPrefer not to answer"        = "Evangelical × Prefer not to answer",
+    "noreligJewish:religionsPrefer not to answer"             = "Jewish × Prefer not to answer",
+    "(Intercept)"                                             = "Intercept"
+  ),
+  groups = list(
+    "Vig. Migration (ref.=Chilean)"                           = 1:2,
+    "Vig. Religion (ref.=No religious)"                       = 3:5,
+    "Vig. Migration × Rs. Migration (ref.=Chilean)"           = 6:13,
+    "Vig. Religion × Rs. Religion (ref.=Atheist/Agnostic)"   = 14:28
+  ),
+  custom.gof.rows = list(
+    "Resp. characteristics" = c("Yes", "Yes")
+  )  
+)
+```
+
+```{r}
+htmlreg(
+  interactions[5:6],
+  single.row = T,
+  digits = 3,
+  file = here::here("output/tables/tableS002c.html"),
+  caption = "Table S2c: Multilevel regression models with cross-level interactions vignette human values and politics",
+  caption.above = TRUE,
+  custom.model.names = c(
+    "M5: Human Values",
+    "M6: Politics"
+  ),
+  custom.coef.map = list(
+    # Vignette Human Values
+    "selftransConservation"                                   = "Conservation",
+    "selftransOpeness to change"                              = "Openness to Change",
+    "selftransSelf-transcendence"                             = "Self-transcendence",
+    # Vignette Politics
+    "polcenterLeft-wing"                                      = "Left-wing",
+    "polcenterRight-wing"                                     = "Right-wing",
+    "polcenterUninterested"                                   = "Uninterested",
+    # Interactions: Vignette Human Values × Rs. Human Values (M5)
+    "selftransConservation:humanvalueopenness_change"         = "Conservation × Openness to Change",
+    "selftransOpeness to change:humanvalueopenness_change"    = "Openness to Change × Openness to Change",
+    "selftransSelf-transcendence:humanvalueopenness_change"   = "Self-transcendence × Openness to Change",
+    "selftransConservation:humanvalueconservation"            = "Conservation × Conservation",
+    "selftransOpeness to change:humanvalueconservation"       = "Openness to Change × Conservation",
+    "selftransSelf-transcendence:humanvalueconservation"      = "Self-transcendence × Conservation",
+    "selftransConservation:humanvalueself_transcendence"      = "Conservation × Self-transcendence",
+    "selftransOpeness to change:humanvalueself_transcendence" = "Openness to Change × Self-transcendence",
+    "selftransSelf-transcendence:humanvalueself_transcendence"= "Self-transcendence × Self-transcendence",
+    # Interactions: Vignette Politics × Rs. Ideology (M6)
+    "polcenterLeft-wing:ideology_collapsedCenter"             = "Left-wing × Center",
+    "polcenterRight-wing:ideology_collapsedCenter"            = "Right-wing × Center",
+    "polcenterUninterested:ideology_collapsedCenter"          = "Uninterested × Center",
+    "polcenterLeft-wing:ideology_collapsedRight"              = "Left-wing × Right",
+    "polcenterRight-wing:ideology_collapsedRight"             = "Right-wing × Right",
+    "polcenterUninterested:ideology_collapsedRight"           = "Uninterested × Right",
+    "polcenterLeft-wing:ideology_collapsedNon-Partisan"       = "Left-wing × Non-Partisan",
+    "polcenterRight-wing:ideology_collapsedNon-Partisan"      = "Right-wing × Non-Partisan",
+    "polcenterUninterested:ideology_collapsedNon-Partisan"    = "Uninterested × Non-Partisan",
+    "(Intercept)"                                             = "Intercept"
+  ),
+  groups = list(
+    "Vig. Human Values (ref.=Self-enhancement)"               = 1:3,
+    "Vig. Politics (ref.=Center)"                             = 4:6,
+    "Vig. Human Values × Rs. Human Values (ref.=Self-enhancement)" = 7:15,
+    "Vig. Politics × Rs. Ideology (ref.=Left)"                = 16:24
+  ),
+  custom.gof.rows = list(
+    "Resp. characteristics" = c("Yes", "Yes")
+  )
+)
+
+library(marginaleffects)
+plot_slopes(
+  interactions[[3]],
+  variables = "vmigback",
+  by        = "migration"
+) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Effect of Vignette Migration Background\nby Respondent Migration Background",
+    x     = "Respondent Migration Background",
+    y     = "Average Marginal Effect"
+  ) +
+  theme_minimal()
+```
+
+```{r AMEs-trust}
+library(marginaleffects)
+library(ggplot2)
+library(dplyr)
+
+# ── M1: Vignette Income × Respondent Income ──────────────────────────────────
+
+ame_income <- avg_slopes(
+  interactions[[1]],
+  variables = "vincome",
+  by        = "income_qui"
+)
+
+ame_income_plot <- ame_income |>
+  mutate(
+    contrast = case_when(
+      contrast == "mean(Middle) - mean(Low)" ~ "Middle vignette\nvs. Low",
+      contrast == "mean(High) - mean(Low)"   ~ "High vignette\nvs. Low"
+    ),
+    income_qui = factor(income_qui, levels = c(1, 2, 3, 4, 5),
+                        labels = c("Quintile 1", "Quintile 2", "Quintile 3",
+                                   "Quintile 4", "Quintile 5"))
+  )
+
+ggplot(ame_income_plot,
+       aes(x = estimate, y = income_qui,
+           xmin = conf.low, xmax = conf.high,
+           color = estimate > 0)) +
+  geom_pointrange() +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_text(aes(label = sprintf("%.3f", estimate)),
+            hjust = 0.5, vjust = -0.8, size = 3, show.legend = FALSE) +
+  facet_wrap(~ contrast, ncol = 2) +
+  scale_color_manual(
+    values = c("TRUE" = "#2166ac", "FALSE" = "#d6604d"),
+    labels = c("TRUE" = "Positive", "FALSE" = "Negative"),
+    name   = "Direction"
+  ) +
+  labs(
+    title    = "Average Marginal Effect of Vignette Income\nby Respondent Income Quintile",
+    subtitle = "Reference category: Low income vignette",
+    x        = "Average Marginal Effect (SD)",
+    y        = "Respondent Income Quintile",
+    caption  = "Note: Points represent average marginal effects (AME) in standard deviation units.\nError bars denote 95% confidence intervals. AMEs are computed averaging over all other\ncovariates in the model. Reference category for vignette income is Low ($500.000)."
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position  = "bottom",
+    strip.text       = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    plot.caption     = element_text(hjust = 0, size = 8, color = "grey40")
+  )
+
+ggsave(
+  plot     = last_plot(),
+  filename = "fig_ame_income_CL.png",
+  device   = "png",
+  path     = "output/images/",
+  width    = 2.5, height = 2., units = "cm", scale = 10
+)
+
+# ── M2: Vignette Education × Respondent Education ────────────────────────────
+
+ame_education <- avg_slopes(
+  interactions[[2]],
+  variables = "vedu",
+  by        = "educat"
+)
+
+ame_education_plot <- ame_education |>
+  mutate(
+    contrast = case_when(
+      contrast == "mean(Middle) - mean(Low)" ~ "High school vignette\nvs. Primary",
+      contrast == "mean(High) - mean(Low)"   ~ "University vignette\nvs. Primary"
+    ),
+    educat = factor(educat, levels = c("Primary", "Secondary", "Technical", "Universitary"))
+  )
+
+ggplot(ame_education_plot,
+       aes(x = estimate, y = educat,
+           xmin = conf.low, xmax = conf.high,
+           color = estimate > 0)) +
+  geom_pointrange() +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_text(aes(label = sprintf("%.3f", estimate)),
+            hjust = 0.5, vjust = -0.8, size = 3, show.legend = FALSE) +
+  facet_wrap(~ contrast, ncol = 2) +
+  scale_color_manual(
+    values = c("TRUE" = "#2166ac", "FALSE" = "#d6604d"),
+    labels = c("TRUE" = "Positive", "FALSE" = "Negative"),
+    name   = "Direction"
+  ) +
+  labs(
+    title    = "Average Marginal Effect of Vignette Education\nby Respondent Education",
+    subtitle = "Reference category: Primary education vignette",
+    x        = "Average Marginal Effect (SD)",
+    y        = "Respondent Education",
+    caption  = "Note: Points represent average marginal effects (AME) in standard deviation units.\nError bars denote 95% confidence intervals. AMEs are computed averaging over all other\ncovariates in the model. Reference category for vignette education is Primary."
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position  = "bottom",
+    strip.text       = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    plot.caption     = element_text(hjust = 0, size = 8, color = "grey40")
+  )
+
+ggsave(
+  plot     = last_plot(),
+  filename = "fig_ame_education_CL.png",
+  device   = "png",
+  path     = "output/images/",
+  width    = 2.5, height = 2., units = "cm", scale = 10
+)
+
+# ── M3: Vignette Migration × Respondent Migration ────────────────────────────
+
+ame_migration <- avg_slopes(
+  interactions[[3]],
+  variables = "vmigback",
+  by        = "migration"
+)
+
+ame_migration_plot <- ame_migration |>
+  mutate(
+    contrast = case_when(
+      contrast == "mean(2nd generation (Peruvian)) - mean(No migration background)" ~ "Peruvian vignette\nvs. Chilean",
+      contrast == "mean(1. Generation (Venezuelan)) - mean(No migration background)" ~ "Venezuelan vignette\nvs. Chilean"
+    ),
+    migration = factor(migration, levels = c("Chile", "Venezuela", "Peru", "Bolivia", "Others"))
+  )
+
+ggplot(ame_migration_plot,
+       aes(x = estimate, y = migration,
+           xmin = conf.low, xmax = conf.high,
+           color = estimate > 0)) +
+  geom_pointrange() +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_text(aes(label = sprintf("%.3f", estimate)),
+            hjust = 0.5, vjust = -0.8, size = 3, show.legend = FALSE) +
+  facet_wrap(~ contrast, ncol = 2) +
+  scale_color_manual(
+    values = c("TRUE" = "#2166ac", "FALSE" = "#d6604d"),
+    labels = c("TRUE" = "Positive", "FALSE" = "Negative"),
+    name   = "Direction"
+  ) +
+  labs(
+    title    = "Average Marginal Effect of Vignette Migration\nby Respondent Migration Background",
+    subtitle = "Reference category: Chilean vignette",
+    x        = "Average Marginal Effect (SD)",
+    y        = "Respondent Migration Background",
+    caption  = "Note: Points represent average marginal effects (AME) in standard deviation units.\nError bars denote 95% confidence intervals. AMEs are computed averaging over all other\ncovariates in the model. Reference category for vignette migration is Chilean."
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position  = "bottom",
+    strip.text       = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    plot.caption     = element_text(hjust = 0, size = 8, color = "grey40")
+  )
+
+ggsave(
+  plot     = last_plot(),
+  filename = "fig_ame_migration_CL.png",
+  device   = "png",
+  path     = "output/images/",
+  width    = 2.5, height = 2., units = "cm", scale = 10
+)
+
+# ── M4: Vignette Religion × Respondent Religion ──────────────────────────────
+
+ame_religion <- avg_slopes(
+  interactions[[4]],
+  variables = "norelig",
+  by        = "religions"
+)
+
+ame_religion_plot <- ame_religion |>
+  mutate(
+    contrast = case_when(
+      contrast == "mean(Catholic) - mean(Non-religious)"    ~ "Catholic vignette\nvs. Non-religious",
+      contrast == "mean(Evangelical) - mean(Non-religious)" ~ "Evangelical vignette\nvs. Non-religious",
+      contrast == "mean(Jewish) - mean(Non-religious)"      ~ "Jewish vignette\nvs. Non-religious"
+    ),
+    religions = factor(religions, levels = c(
+      "Non-religious",
+      "Believer without affiliation",
+      "Catholic",
+      "Evangelical",
+      "Jewish",
+      "Prefer not to answer"
+    ))
+  )
+
+ggplot(ame_religion_plot,
+       aes(x = estimate, y = religions,
+           xmin = conf.low, xmax = conf.high,
+           color = estimate > 0)) +
+  geom_pointrange() +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_text(aes(label = sprintf("%.3f", estimate)),
+            hjust = 0.5, vjust = -0.8, size = 3, show.legend = FALSE) +
+  facet_wrap(~ contrast, ncol = 3) +
+  scale_color_manual(
+    values = c("TRUE" = "#2166ac", "FALSE" = "#d6604d"),
+    labels = c("TRUE" = "Positive", "FALSE" = "Negative"),
+    name   = "Direction"
+  ) +
+  labs(
+    title    = "Average Marginal Effect of Vignette Religion\nby Respondent Religion",
+    subtitle = "Reference category: Non-religious vignette",
+    x        = "Average Marginal Effect (SD)",
+    y        = "Respondent Religion",
+    caption  = "Note: Points represent average marginal effects (AME) in standard deviation units.\nError bars denote 95% confidence intervals. AMEs are computed averaging over all other\ncovariates in the model. Reference category for vignette religion is Non-religious."
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position  = "bottom",
+    strip.text       = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    plot.caption     = element_text(hjust = 0, size = 8, color = "grey40")
+  )
+
+ggsave(
+  plot     = last_plot(),
+  filename = "fig_ame_religion_CL.png",
+  device   = "png",
+  path     = "output/images/",
+  width    = 2.5, height = 2., units = "cm", scale = 10
+)
+
+# ── M5: Vignette Human Values × Respondent Human Values ──────────────────────
+
+ame_humanvalues <- avg_slopes(
+  interactions[[5]],
+  variables = "selftrans",
+  by        = "humanvalue"
+)
+
+ame_humanvalues_plot <- ame_humanvalues |>
+  mutate(
+    contrast = case_when(
+      contrast == "mean(Conservation) - mean(Self-enhancement)"     ~ "Conservation vignette\nvs. Self-enhancement",
+      contrast == "mean(Openess to change) - mean(Self-enhancement)"~ "Openness to Change vignette\nvs. Self-enhancement",
+      contrast == "mean(Self-transcendence) - mean(Self-enhancement)"~ "Self-transcendence vignette\nvs. Self-enhancement"
+    ),
+    humanvalue = factor(humanvalue, levels = c(
+      "self_enhancement",
+      "conservation",
+      "openness_change",
+      "self_transcendence"
+    ),
+    labels = c(
+      "Self-enhancement",
+      "Conservation",
+      "Openness to Change",
+      "Self-transcendence"
+    ))
+  )
+
+ggplot(ame_humanvalues_plot,
+       aes(x = estimate, y = humanvalue,
+           xmin = conf.low, xmax = conf.high,
+           color = estimate > 0)) +
+  geom_pointrange() +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_text(aes(label = sprintf("%.3f", estimate)),
+            hjust = 0.5, vjust = -0.8, size = 3, show.legend = FALSE) +
+  facet_wrap(~ contrast, ncol = 3) +
+  scale_color_manual(
+    values = c("TRUE" = "#2166ac", "FALSE" = "#d6604d"),
+    labels = c("TRUE" = "Positive", "FALSE" = "Negative"),
+    name   = "Direction"
+  ) +
+  labs(
+    title    = "Average Marginal Effect of Vignette Human Values\nby Respondent Human Values",
+    subtitle = "Reference category: Self-enhancement vignette",
+    x        = "Average Marginal Effect (SD)",
+    y        = "Respondent Human Values",
+    caption  = "Note: Points represent average marginal effects (AME) in standard deviation units.\nError bars denote 95% confidence intervals. AMEs are computed averaging over all other\ncovariates in the model. Reference category for vignette human values is Self-enhancement."
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position  = "bottom",
+    strip.text       = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    plot.caption     = element_text(hjust = 0, size = 8, color = "grey40")
+  )
+
+ggsave(
+  plot     = last_plot(),
+  filename = "fig_ame_humanvalues_CL.png",
+  device   = "png",
+  path     = "output/images/",
+  width    = 2.5, height = 2., units = "cm", scale = 10
+)
+
+# ── M6: Vignette Politics × Respondent Ideology ──────────────────────────────
+
+ame_politics <- avg_slopes(
+  interactions[[6]],
+  variables = "polcenter",
+  by        = "ideology_collapsed"
+)
+
+ame_politics_plot <- ame_politics |>
+  mutate(
+    contrast = case_when(
+      contrast == "mean(Left-wing) - mean(Center)"     ~ "Left-wing vignette\nvs. Center",
+      contrast == "mean(Right-wing) - mean(Center)"    ~ "Right-wing vignette\nvs. Center",
+      contrast == "mean(Uninterested) - mean(Center)"  ~ "Uninterested vignette\nvs. Center"
+    ),
+    ideology_collapsed = factor(ideology_collapsed,
+                                levels = c("Left", "Center", "Right", "Non-Partisan"))
+  )
+
+ggplot(ame_politics_plot,
+       aes(x = estimate, y = ideology_collapsed,
+           xmin = conf.low, xmax = conf.high,
+           color = estimate > 0)) +
+  geom_pointrange() +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_text(aes(label = sprintf("%.3f", estimate)),
+            hjust = 0.5, vjust = -0.8, size = 3, show.legend = FALSE) +
+  facet_wrap(~ contrast, ncol = 3) +
+  scale_color_manual(
+    values = c("TRUE" = "#2166ac", "FALSE" = "#d6604d"),
+    labels = c("TRUE" = "Positive", "FALSE" = "Negative"),
+    name   = "Direction"
+  ) +
+  labs(
+    title    = "Average Marginal Effect of Vignette Politics\nby Respondent Ideology",
+    subtitle = "Reference category: Center vignette",
+    x        = "Average Marginal Effect (SD)",
+    y        = "Respondent Ideology",
+    caption  = "Note: Points represent average marginal effects (AME) in standard deviation units.\nError bars denote 95% confidence intervals. AMEs are computed averaging over all other\ncovariates in the model. Reference category for vignette politics is Center."
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position  = "bottom",
+    strip.text       = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    plot.caption     = element_text(hjust = 0, size = 8, color = "grey40")
+  )
+
+ggsave(
+  plot     = last_plot(),
+  filename = "fig_ame_politics_CL.png",
+  device   = "png",
+  path     = "output/images/",
+  width    = 2.5, height = 2., units = "cm", scale = 10
+)
+```
+
+
 
 ```{r coefplot-trust}
 # Extract coefficients and confidence intervals using broom
@@ -286,8 +961,9 @@ coef_data$term <- factor(coef_data$term,
           "**Values (ref: Self-enhancement)**","Conservation", "Openness to change", "Self-transcendence")))
 
 
-coef_data$coef_lab<- paste0(round(coef_data$estimate,2)," (",round(coef_data$std.error,2),")")
+coef_data$coef_lab<- paste0(round(coef_data$estimate,3)," (",round(coef_data$std.error,2),")")
 coef_data$coef_lab <- car::recode(coef_data$coef_lab,recodes = "'NA (NA)'=' '")
+
 
 library(ggthemes)
 library(ggtext) #markdown
@@ -306,7 +982,7 @@ ggplot(coef_data, aes(x = estimate, y = term,label=coef_lab)) +
   geom_point(size = 3, color = "black") +  # Points for coefficient estimates
   geom_text(vjust = 0, nudge_y = 0.3) +  
   labs(
-    title = "[Trust]: Imagine you know person [ID] through your circle of acquaintances.\nHow likely is it that you would get along with person [ID]?",
+    title = "[Get along]: Imagine you know person [ID] through your circle of acquaintances.\nHow likely is it that you would get along with person [ID]?",
     subtitle = "Not likely at all ←                       → Absolutely likely",
     x = "Standardized coefficient",
     y = NULL
@@ -329,8 +1005,119 @@ ggplot(coef_data, aes(x = estimate, y = term,label=coef_lab)) +
 ggsave(plot = last_plot(),filename = "fig_coefplot_friendship_CL.png",device = "png",path = "output/images/",width = 2.5,height = 2.,units = "cm",scale = 10)
 ```
 
+```{r}
+# Conditional predictions (including random effects)
 
-```{r AMEs-trust}
+predicted_friendship <- 
+marginaleffects::predictions(lm_fship_vig_resp) %>% 
+  broom::tidy() %>% 
+  select(friendship_pred=estimate,conf.low,conf.high)
+
+df_vig$friendship_pred <- predicted_friendship$friendship_pred
+df_vig$friendship_pred_lw <- predicted_friendship$conf.low
+df_vig$friendship_pred_hi <- predicted_friendship$conf.high
+
+df_vig$friendship_pred_ptile <- ntile(df_vig$friendship_pred,100)
+
+df_rank_vignettes <- df_vig %>% 
+  filter(friendship_pred_ptile %in% c(1,25,50,75,99)) %>% 
+  arrange(friendship,friendship_pred_ptile,friendship_pred,friendship_pred_ptile)
+set.seed(123)
+df_rank_vignettes_subsample <- 
+df_rank_vignettes %>% select(friendship_pred,friendship_pred_lw,
+                             friendship_pred_hi,friendship_pred_ptile,
+                             vincome:vage) %>%  
+  group_by(friendship_pred_ptile) %>%
+  slice_sample(n = 1) %>%
+  ungroup() 
+
+library(ggplot2)
+#########################################-
+## Assuming df_rank_vignettes contains ##-
+#########################################-
+# - friendship_pred (point estimate)
+# - friendship_pred_lw (lower bound)
+# - friendship_pred_hi (upper bound)
+# - friendship_pred_ptile (percentile group: 1, 25, 50, 75, 99)
+
+# Treat percentile as numeric (better spacing) ---------------------------------|
+ggplot(df_rank_vignettes_subsample, aes(x = friendship_pred_ptile, y = friendship_pred)) +
+  geom_point(size = 3, color = "darkblue") +
+  geom_errorbar(aes(ymin = friendship_pred_lw, ymax = friendship_pred_hi), 
+                width = 5, linewidth = 0.8, color = "darkblue") +
+  scale_x_continuous(breaks = c(1, 25, 50, 75, 99),  
+                     sec.axis = sec_axis(~ ., 
+                      breaks = c(1, 25, 50, 75, 99), 
+                      labels = paste(df_rank_vignettes_subsample$vincome,df_rank_vignettes_subsample$vedu,
+      df_rank_vignettes_subsample$vmigback,df_rank_vignettes_subsample$norelig,
+      df_rank_vignettes_subsample$polcenter,df_rank_vignettes_subsample$selftrans))
+                     ) +
+  labs(x = "Percentile group", 
+       y = "Friendship prediction (95% CI)") +
+  theme_minimal(base_size = 12) +
+  coord_flip()+
+  theme(panel.grid.minor = element_blank())
+```
+
+```{r mfcurve-trust}
+predicted_friendship <- 
+marginaleffects::predictions(lm_fship_vig_resp) %>% 
+  broom::tidy() %>% 
+  select(friendship_pred=estimate,conf.low,conf.high)
+
+df_vig$friendship_pred <- predicted_friendship$friendship_pred
+df_vig$friendship_pred_lw <- predicted_friendship$conf.low
+df_vig$friendship_pred_hi <- predicted_friendship$conf.high
+
+df_vig$friendship_pred_ptile <- ntile(df_vig$friendship_pred,100)
+
+df_vig$vmigback
+
+library(mfcurve)
+library(plotly)
+# Create mfcurve plot
+mfcurve(
+  data = df_vig,
+  outcome = "friendship_pred",
+  factors = c("vincome","vedu","norelig","vmigback","polcenter","selftrans"),
+  test = "mean",mode = "expanded",showGrandMean = F,showSigStars = F,showTitle = F
+  )
+
+mfcurve_plotting(
+  data = df_vig,
+  outcome = "friendship_pred",
+  factors = c("vincome","vedu","norelig","vmigback","polcenter","selftrans"),
+  test = "mean",mode = "expanded",showGrandMean = F,showSigStars = F,showTitle = F,SaveProcessedData = T
+  )
+
+
+mfcurve_df <- 
+mfcurve_preprocessing(  data = df_vig,
+  outcome = "friendship_pred",
+  factors = c("vincome","vedu","norelig","vmigback","polcenter","selftrans"),
+  test = "mean")
+
+
+mfcurve_df$lower_data$labels <- factor(
+  mfcurve_df$lower_data$factor,
+  levels = c("vincome", "vedu", "norelig", "vmigback", "polcenter", "selftrans"),
+  labels = c("Income", "Education", "Religion", "Migration", "Political", "Values")
+)
+
+
+mfcurve_df$lower_data$factor <- mfcurve_df$lower_data$labels 
+
+mfcurve_df$lower_data$rank
+
+mfcurve_plotting(group_stats_vis = mfcurve_df$group_stats_vis,lower_data = mfcurve_df$lower_data,
+  outcome = "friendship_pred",grand_mean = mfcurve_df$grand_mean,factors = mfcurve_df$lower_data$factor,level = mfcurve_df$level,
+  mode = "expanded",
+  showGrandMean = F,showSigStars = F,showTitle = F
+  )
+
+```
+
+```{r Predicted-trust}
 library(marginaleffects) 
 library(ggplot2)
 library(dplyr)
@@ -356,7 +1143,7 @@ ggplot(aes(y =estimate,x=vincome, group=income_qui,color=income_qui,ymin=conf.lo
   scale_y_continuous(limits = c(-1,1))+
   labs(
     # caption = paste0("Note: N (observations) = ",nobs(cl_trust_inco),"; N (individuals) = ",lme4::ngrps(cl_trust_inco),". Predictive estimates with 95% confidence intervals"),
-       x="Income (Vignette)",y="Trust",
+       x="Income (Vignette)",y="Get along",
        color="Income (R's)",
        fill="Income (R's)") +
   theme(legend.position = "bottom");plot_income
@@ -374,7 +1161,7 @@ ggplot(aes(y =estimate,x=vedu, fill=educat, group=educat,color=educat,ymin=conf.
   scale_color_manual(values=c("#323232","#989898","#CCCCCC","red"))+
   scale_y_continuous(limits = c(-1,1))+
   labs(caption = paste0("Note: N (observations) = ",nobs(cl_trust_educ),"; N (individuals) = ",lme4::ngrps(cl_trust_educ),". Predictive estimates with 95% confidence intervals"),
-       x="Education (Vignette)",y="Trust",
+       x="Education (Vignette)",y="Get along",
        color="Education (R's)",
        fill="Education (R's)") +
   theme(legend.position = "bottom");plot_education
@@ -394,7 +1181,7 @@ df_plot_mig %>%
       labs(
         # caption = paste0("Note: N (observations) = ",nobs(cl_trust_migr),"; N (individuals) = ",lme4::ngrps(cl_trust_migr),
                             # ". Predictive estimates with 95% confidence intervals.\nOther migration groups included, not depicted."),
-       x="Migration (Vignette)",y="Trust",
+       x="Migration (Vignette)",y="Get along",
        color="Migration (R's)",
        fill="Migration (R's)") +
   theme(legend.position = "bottom");plot_migration
@@ -415,7 +1202,7 @@ df_plot_reli %>%
   scale_y_continuous(limits = c(-1,1)) +
       labs(caption = paste0("Note: N (observations) = ",nobs(cl_trust_reli),"; N (individuals) = ",lme4::ngrps(cl_trust_reli),
                             ". Predictive estimates with 95% confidence intervals."),
-       x="Religion (Vignette)",y="Trust",
+       x="Religion (Vignette)",y="Get along",
        color="Religion (R's)",
        fill="Religion\ (R's)") +
      theme(
@@ -441,7 +1228,7 @@ ggplot(aes(y =estimate,x=polcenter, fill=ideology_collapsed, group=ideology_coll
   scale_y_continuous(limits = c(-1,1)) +
   labs(
     # caption = paste0("Note: N (observations) = ",nobs(cl_trust_poli),"; N (individuals) = ",lme4::ngrps(cl_trust_poli),". Predictive estimates with 95% confidence intervals"),
-       x="Political (Vignette)",y="Trust",
+       x="Political (Vignette)",y="Get along",
        color="Political (R's)",
        fill="Political (R's)") +
   theme(legend.position = "bottom");plot_political
@@ -457,16 +1244,16 @@ df_plot_valu %>%
   geom_point(size=2,position=position_dodge(width=0.4)) +
   # scale_color_manual(values=c("red","purple","#027A24"))+
   labs(caption = paste0("Note: N (observations) = ",nobs(cl_trust_vals),"; N (individuals) = ",lme4::ngrps(cl_trust_vals),". Predictive estimates with 95% confidence intervals"),
-       x="Human Values (Vignette)",y="Trust",
+       x="Human Values (Vignette)",y="Get along",
        color="Human Values (R's)",
        fill="Human Values (R's)") +
   theme(legend.position = "bottom") + 
   scale_y_continuous(limits = c(-1,1)) +
      theme(
     # legend.position = c(0.93, 0.21),     # posición relativa (derecha-abajo)
-    legend.background = element_rect(fill = "white", color = "gray70", linewidth = 0.3),
+    # legend.background = element_rect(fill = "white", color = "gray70", linewidth = 0.3),
     legend.title = element_text(size = 10),
-    legend.text = element_text(size = 9),
+    legend.text = element_text(size = 5),
     # axis.text.x = element_text(angle = 20, hjust = 1),
     plot.title = element_text(face = "bold")
   );plot_values
@@ -480,16 +1267,16 @@ library(patchwork)
 # Assuming your plots are named p1, p2, p3, p4
 (plot_income | plot_education)  # 2x2 grid
 ggsave(plot = last_plot(),filename = "figure_slides01_CL.png",device = "png",
-       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 18)
+       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 16)
 
 
 (plot_migration | plot_relig)  # 2x2 grid
 ggsave(plot = last_plot(),filename = "figure_slides02_CL.png",device = "png",
-       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 18)
+       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 16)
 
 (plot_political | plot_values)  # 2x2 grid
 ggsave(plot = last_plot(),filename = "figure_slides03_CL.png",device = "png",
-       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 18)
+       path = here::here("output/images"),width = 2,height = 1,units = "cm",scale = 16)
 ```
 
 
