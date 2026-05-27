@@ -128,3 +128,42 @@ Simmel, G. (2011, [1900]). *The philosophy of money*.
 ::: {#refs}
 :::
 ::::
+
+# Supplementary Material 
+
+## Income
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/fig_ame_income_CL.png")
+```
+
+## Education
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/fig_ame_education_CL.png")
+```
+
+## Migration
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/fig_ame_migration_CL.png")
+```
+
+## Religion
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/fig_ame_religion_CL.png")
+```
+
+## Values
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/fig_ame_humanvalues_CL.png")
+```
+
+## Ideology
+
+```{r , echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/fig_ame_politics_CL.png")
+```
+
