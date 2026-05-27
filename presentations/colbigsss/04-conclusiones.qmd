@@ -7,19 +7,19 @@
 
 * Socioeconomic differences show a pattern of distancing, particularly the withdrawal of individuals with low status from those with high status.
 
-* Sociocultural diversity is less pronounced. Newcomers (migrants) tend to be less liked on average; however, this appears to be a relatively stable pattern across groups, with no clear evidence of homophily.
+* Sociocultural positions have nuanced effects. Migrants tend to be less liked on average; however, this appears to be a relatively stable pattern across groups, with no clear evidence of homophily.
 
-* Religious differences between believers and non-believers are more evident, especially between non-religious individuals and Christians, possibly reflecting a process of secular change (?).
+* Religious differences between believers and non-believers are more evident, especially between non-religious individuals and Christians. This is possibly reflecting a process of secular change (?).
 ::::
 
 ## Discussion and conclusions
 
 :::: {.incremental .highlight-last style="font-size: 110%;"}
 
-* Political divides are noticeable: moderates are generally preferred over both extremes. 
-  * Homophily is evident within political groups, is this some degree of polarization?
+* Political divides are noticeable: centrists are generally preferred over both poles. 
+  * Homophily is evident within political groups. Would this be considered polarization?
 
 * Human values emerge as the strongest driver. 
-  * Similarity in values is closely linked trustworthiness. Particularly for the those with "self-enhancement" as dominant value.
+  * Similarity in values is closely linked positive expectations. Particularly for the those with "self-enhancement" as dominant value.
 
 ::::

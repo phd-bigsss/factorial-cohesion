@@ -30,7 +30,7 @@ bibliography: "bib/phd-tesis.bib"
 
 * Three domains shape horizontal cohesion at the aggregate level:
 
-  * **Socioeconomic**: affluence strengthens cohesion; inequality weakens it by segregating social relations and reducing perceived shared fate
+  * **Socioeconomic**: affluence strengthens cohesion; inequality weakens it by segregating social relations and reducing perceived commonalities
   * **Sociocultural**: diversity effects are modest and context-dependent, operating through contact (familiarity) or conflict (threat) mechanisms
   * **Values**: self-transcendence and openness promote cohesion; value polarization erodes it
 
@@ -43,13 +43,13 @@ bibliography: "bib/phd-tesis.bib"
 
 ***The scale of analysis***
 
-* Common limitation across all three domains: mechanisms are inferred at the aggregate level, not studied at the level of between individuals interactions.
+* Common limitation across all three domains: mechanisms are inferred at the aggregate level, not studied at the level of interactions between individuals.
   
 * This study **scales down** to the micro-level, focusing on how individuals form positive interactional expectations toward others across (i) socioeconomic, (ii) sociocultural, and (iii) value/ideological *social positions*.
 
 :::
-::::
 :::::
+::::
 
 
 ## Theoretical perspectives on social cohesion
@@ -71,7 +71,7 @@ bibliography: "bib/phd-tesis.bib"
   * **Heterogeneity** (dispersion across categories).
   * **Inequality** (status disparity across ranks).
 
-* Weakly correlated, intersecting parameters can foster intergroup ties; strongly correlated parameters reinforce boundaries.[@blau_macrosociological_1977]
+* Weakly correlated, intersecting parameters can foster intergroup ties; strongly correlated parameters reinforce boundaries [@blau_macrosociological_1977].
 * Objective structure captures opportunities for association while excluding preferences, norms, and values.
   
 :::
@@ -93,7 +93,7 @@ bibliography: "bib/phd-tesis.bib"
 
 * Ideological worldviews also matter: left-right alignments shape perceived proximity, trust, and expected interaction [@sartori_politics_1969; @hjermitslev_beyond_2026].
 
-* Cohesion therefore depends not only on structural location, but also on perceived cultural and political alignment [@deitelhoff_social_2023; @grunow_social_2023].
+* Cohesion therefore is affected not only by structural location, but also by perceived values and ideological alignment [@deitelhoff_social_2023; @grunow_social_2023].
 
 :::
 
@@ -182,13 +182,17 @@ knitr::include_graphics("images/humanvalues2.jpeg")
 
 ## Summary 
 
+::: {.incremental}
+
 1. Social cohesion is a characteristic of a social unit, but it is defined in terms of the social interactions within it. 
 
 2. Social interactions within the unit are the constituent elements of social cohesion. 
 
 3. The characteristics of the social unit, such as inequality, heterogeneity, and institutions (formal or informal), are understood as explanatory factors of cohesiveness, since they affect social interactions. 
 
-> This study focuses on the **horizontal dimension** of social cohesion. Particularly, the individual (*subjective*) **expectations** toward different social positions as a constitutive component in the formation of social associations within and between groups. 
+4. This study focuses on the **horizontal dimension** of social cohesion. Particularly, the individual **expectations** toward different social positions as a constitutive element in the formation of social associations. 
+
+:::
 
 
 # How are different social positions linked to positive interactional expectations, and to what extent does similarity in social position affect them? {background-color="#491106ff"}
